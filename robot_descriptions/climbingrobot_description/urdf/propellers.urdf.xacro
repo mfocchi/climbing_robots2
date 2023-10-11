@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+		
+  <joint name="propeller_sx_location" type="fixed">
+    <parent link="base_link"/>
+    <child link="propeller_sx"/>
+    <origin rpy="0 -1.57 0" xyz="0.07 -0.05  0.025"/>
+  </joint>
+
+
+  <link name="propeller_sx">    
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://climbingrobot_description/meshes/propeller_simple.stl" scale="0.002 0.002 0.002"/>
+      </geometry>
+      <material name="blue">
+        <color rgba="0 1 0 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+
+
+  <joint name="propeller_dx_location" type="fixed">
+    <parent link="base_link"/>
+    <child link="propeller_dx"/>
+    <origin rpy="0 -1.57 0" xyz="0.07 0.05 0.025"/>
+  </joint>
+
+
+  <link name="propeller_dx">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://climbingrobot_description/meshes/propeller_simple.stl" scale="0.002 0.002 0.002"/>
+      </geometry>
+	<material name="blue">
+        <color rgba="0 1 0 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+    
+</robot>
