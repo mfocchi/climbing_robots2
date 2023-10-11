@@ -1,24 +1,11 @@
-# ALPINE: A cLimbing robot for oPerations In mouNtain environmEnts
-
-
-
-
-Michele Focchi, Andrea Del Prete, Luigi Palopoli, Daniele Fontanelli, Marco Frego, Angelika Peer
-
-Corresponding author's email: Michele Focchi
-
-This repository is a reduced version of [Locosim](https://github.com/mfocchi/locosim) ([preprint](https://arxiv.org/abs/2305.02107)) and it is intended for reproducing simulations and experiments
-presented in the manuscript : TBD
-
 
 ## Install Locosim
 
-Locosim is composed by a **roscontrol** node called **ros_impedance_controller** (written in C++) that interfaces the 
-Python ros node (where the controller is written) to a Gazebo simulator.
+Locosim is composed by a **roscontrol** node called **ros_impedance_controller** (written in C++) that interfaces the Python ros node (where the controller is written) to a Gazebo simulator.
 
 ### SOFTWARE VERSIONS:
 
-Locosim is compatible with Ubuntu 16/18/20. The installation instructions have been generalized accordingly. 
+Locosim is compatible with Ubuntu 18/20. The installation instructions have been generalized accordingly. 
 You need replace few strings with the appropriate values according to your operating systems as follows:
 
 | Ubuntu 18:                   | **Ubuntu 20**:               |
