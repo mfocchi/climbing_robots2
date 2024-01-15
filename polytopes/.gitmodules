@@ -1,0 +1,3 @@
+[submodule "pypoman"]
+	path = pypoman
+	url = git@gitlab.advr.iit.it:dls-lab/pypoman.git

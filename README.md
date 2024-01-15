@@ -35,7 +35,7 @@ To be able to keep the plots **alive** at the end of the program and to have acc
 To run from a terminal we  use the interactive option that allows  when you close the program have access to variables:
 
 ```
-$ Python3 -i $LOCOSIM_DIR/robot_control/base_controllers/climbingrobot_controller2.py
+$ python3 -i $LOCOSIM_DIR/robot_control/base_controllers/climbingrobot_controller2.py
 ```
 
 to exit from Python3 console type CTRL+Z
@@ -60,6 +60,16 @@ Note: You need the matlab runtime Environment installed to be able to run the si
 ### Matlab
 
 This repository provides 1) a Matlab simulation with the reduced order model, 2) an offline jump optimization (optimal control) generate the jump, and an 3) online optimization (mpc) to control the jump. In both of them it is possible to generate C++ code uncommenting the appropriate lines. For the MPC it is also possible to emulate an MPC loop.
+
+### Polytopes
+
+To run the code for the polytopes computation:
+
+```
+$ python3 -i $LOCOSIM_DIR/polytopes/fwp_climbing_robot.py
+```
+
+
 
 
 
