@@ -1,6 +1,6 @@
 /*
- * Non-Degree Granting Education License -- for use at non-degree
- * granting, nonprofit, educational organizations only. Not for
+ * Academic License - for use in teaching, academic research, and meeting
+ * course requirements at degree granting institutions only.  Not for
  * government, commercial, or other organizational use.
  *
  * norm.h

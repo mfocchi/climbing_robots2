@@ -1,6 +1,6 @@
 
 function solution = optimize_cpp(p0,  pf, Fleg_max, Fr_max, mu, params) 
-    %make it column vector
+    %make sure is column vector
     p0 = p0(:);
     pf = pf(:);
     dt = 0.001; %for eval solution
@@ -8,6 +8,8 @@ function solution = optimize_cpp(p0,  pf, Fleg_max, Fr_max, mu, params)
     % needs to be fixed for code generation
     constr_tolerance = 1e-3;
     
+    dt=0.001; % only to evaluate solution
+
     %compute initial state from jump param
     x0 = computeStateFromCartesian(params, p0);
 
@@ -39,10 +41,11 @@ function solution = optimize_cpp(p0,  pf, Fleg_max, Fr_max, mu, params)
     solution.optim_output = output;  
 
     % evaluate constraint violation 
-    [c ceq, num_constr, solution_constr] = constraints(x, p0,  pf,Fleg_max, Fr_max, mu, params);
-    solution.c = c;    
+    [c, ceq, num_constr, solution_constr] = constraints(x, p0,  pf,Fleg_max, Fr_max, mu, params);
+    solution.c = c; 
+    solution.num_constr = num_constr;
     solution.solution_constr = solution_constr;
-   
+    solution.constr_tolerance = constr_tolerance;
     
 end
 

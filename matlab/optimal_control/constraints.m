@@ -71,7 +71,7 @@ solution_constr.final_error_discrete = norm(p(:,end) - pf);
 if params.obstacle_avoidance
     
     center = params.obstacle_location; %[0; 3;-7.5];
-    radii = [1.5, 1.5, 0.866];
+    radii = params.obstacle_size; 
     
     
     a_y = radii(1)^2/radii(2)^2;

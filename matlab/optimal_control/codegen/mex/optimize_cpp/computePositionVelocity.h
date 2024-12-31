@@ -1,6 +1,6 @@
 /*
- * Non-Degree Granting Education License -- for use at non-degree
- * granting, nonprofit, educational organizations only. Not for
+ * Academic License - for use in teaching, academic research, and meeting
+ * course requirements at degree granting institutions only.  Not for
  * government, commercial, or other organizational use.
  *
  * computePositionVelocity.h
@@ -23,10 +23,15 @@
 
 /* Function Declarations */
 void b_computePositionVelocity(real_T params_b, const emxArray_real_T *psi,
-  const emxArray_real_T *l1, const emxArray_real_T *l2, const emxArray_real_T
-  *psid, const emxArray_real_T *l1d, const emxArray_real_T *l2d, emxArray_real_T
-  *p, emxArray_real_T *pd);
-void computePositionVelocity(real_T params_b, const emxArray_real_T *psi, const
-  emxArray_real_T *l1, const emxArray_real_T *l2, emxArray_real_T *p);
+                               const emxArray_real_T *l1,
+                               const emxArray_real_T *l2,
+                               const emxArray_real_T *psid,
+                               const emxArray_real_T *l1d,
+                               const emxArray_real_T *l2d, emxArray_real_T *p,
+                               emxArray_real_T *pd);
+
+void computePositionVelocity(real_T params_b, const emxArray_real_T *psi,
+                             const emxArray_real_T *l1,
+                             const emxArray_real_T *l2, emxArray_real_T *p);
 
 /* End of code generation (computePositionVelocity.h) */

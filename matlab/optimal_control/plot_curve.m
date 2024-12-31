@@ -1,6 +1,8 @@
 function  plot_curve(solution, solution_constr, p0,pf,  mu, plot_energy, color_input, full_update, params)
 
-
+%make sure is column vector
+p0 = p0(:);
+pf = pf(:);
 if full_update
     % anchor1  line
     plot3([params.p_a1(1) p0(1)],[params.p_a1(2) p0(2)],[params.p_a1(3) p0(3)],'k--');   hold on ;
@@ -81,7 +83,7 @@ force_scale = 0.2;
 arrow3d_points(p0,p0 + solution.Fleg*force_scale,'color','r');grid on;hold on;
 
 if params.obstacle_avoidance
-     plot_ellipsoid(params.obstacle_location,1.5, 1.5, 0.866,  min_z, max_z, min_y,max_y);
+     plot_ellipsoid(params.obstacle_location,params.obstacle_size(1), params.obstacle_size(2), params.obstacle_size(3),  min_z, max_z, min_y,max_y);
 end
 
 grid on;

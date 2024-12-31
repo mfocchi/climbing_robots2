@@ -1,6 +1,6 @@
 /*
- * Non-Degree Granting Education License -- for use at non-degree
- * granting, nonprofit, educational organizations only. Not for
+ * Academic License - for use in teaching, academic research, and meeting
+ * course requirements at degree granting institutions only.  Not for
  * government, commercial, or other organizational use.
  *
  * optimize_cpp_mexutil.c
@@ -24,16 +24,16 @@ real_T b_emlrt_marshallIn(const mxArray *u, const emlrtMsgIdentifier *parentId)
   return y;
 }
 
-void disp(const mxArray *b, emlrtMCInfo *location)
+void disp(const mxArray *m, emlrtMCInfo *location)
 {
   const mxArray *pArray;
-  pArray = b;
+  pArray = m;
   emlrtCallMATLABR2012b(emlrtRootTLSGlobal, 0, NULL, 1, &pArray, "disp", true,
                         location);
 }
 
-real_T emlrt_marshallIn(const mxArray *a__output_of_feval_, const char_T
-  *identifier)
+real_T emlrt_marshallIn(const mxArray *a__output_of_feval_,
+                        const char_T *identifier)
 {
   emlrtMsgIdentifier thisId;
   real_T y;
@@ -50,7 +50,7 @@ real_T j_emlrt_marshallIn(const mxArray *src, const emlrtMsgIdentifier *msgId)
   static const int32_T dims = 0;
   real_T ret;
   emlrtCheckBuiltInR2012b(emlrtRootTLSGlobal, msgId, src, "double", false, 0U,
-    &dims);
+                          (const void *)&dims);
   ret = *(real_T *)emlrtMxGetData(src);
   emlrtDestroyArray(&src);
   return ret;

@@ -1,6 +1,6 @@
 /*
- * Non-Degree Granting Education License -- for use at non-degree
- * granting, nonprofit, educational organizations only. Not for
+ * Academic License - for use in teaching, academic research, and meeting
+ * course requirements at degree granting institutions only.  Not for
  * government, commercial, or other organizational use.
  *
  * addBoundToActiveSetMatrix_.h
@@ -22,6 +22,7 @@
 #include <string.h>
 
 /* Function Declarations */
-void addBoundToActiveSetMatrix_(j_struct_T *obj, int32_T TYPE, int32_T idx_local);
+void addBoundToActiveSetMatrix_(h_struct_T *obj, int32_T TYPE,
+                                int32_T idx_local);
 
 /* End of code generation (addBoundToActiveSetMatrix_.h) */

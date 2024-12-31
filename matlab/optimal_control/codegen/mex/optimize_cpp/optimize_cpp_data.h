@@ -1,6 +1,6 @@
 /*
- * Non-Degree Granting Education License -- for use at non-degree
- * granting, nonprofit, educational organizations only. Not for
+ * Academic License - for use in teaching, academic research, and meeting
+ * course requirements at degree granting institutions only.  Not for
  * government, commercial, or other organizational use.
  *
  * optimize_cpp_data.h
@@ -26,5 +26,6 @@ extern const volatile char_T *emlrtBreakCheckR2012bFlagVar;
 extern emlrtContext emlrtContextGlobal;
 extern emlrtMCInfo emlrtMCI;
 extern const char_T cv[15];
+extern const int32_T iv[4];
 
 /* End of code generation (optimize_cpp_data.h) */

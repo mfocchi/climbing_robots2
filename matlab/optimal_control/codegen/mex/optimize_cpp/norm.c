@@ -1,6 +1,6 @@
 /*
- * Non-Degree Granting Education License -- for use at non-degree
- * granting, nonprofit, educational organizations only. Not for
+ * Academic License - for use in teaching, academic research, and meeting
+ * course requirements at degree granting institutions only.  Not for
  * government, commercial, or other organizational use.
  *
  * norm.c
@@ -31,7 +31,6 @@ real_T b_norm(const real_T x[3])
     t = absxk / 3.3121686421112381E-170;
     y = t * t;
   }
-
   absxk = muDoubleScalarAbs(x[1]);
   if (absxk > scale) {
     t = scale / absxk;
@@ -41,7 +40,6 @@ real_T b_norm(const real_T x[3])
     t = absxk / scale;
     y += t * t;
   }
-
   absxk = muDoubleScalarAbs(x[2]);
   if (absxk > scale) {
     t = scale / absxk;
@@ -51,7 +49,6 @@ real_T b_norm(const real_T x[3])
     t = absxk / scale;
     y += t * t;
   }
-
   return scale * muDoubleScalarSqrt(y);
 }
 

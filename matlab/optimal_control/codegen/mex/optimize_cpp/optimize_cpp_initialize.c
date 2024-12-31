@@ -1,6 +1,6 @@
 /*
- * Non-Degree Granting Education License -- for use at non-degree
- * granting, nonprofit, educational organizations only. Not for
+ * Academic License - for use in teaching, academic research, and meeting
+ * course requirements at degree granting institutions only.  Not for
  * government, commercial, or other organizational use.
  *
  * optimize_cpp_initialize.c
@@ -30,10 +30,13 @@ static void optimize_cpp_once(void)
 void optimize_cpp_initialize(void)
 {
   mexFunctionCreateRootTLS();
-  emlrtBreakCheckR2012bFlagVar = emlrtGetBreakCheckFlagAddressR2012b();
-  emlrtClearAllocCountR2012b(emlrtRootTLSGlobal, false, 0U, 0);
+  emlrtBreakCheckR2012bFlagVar =
+      emlrtGetBreakCheckFlagAddressR2022b(emlrtRootTLSGlobal);
+  emlrtClearAllocCountR2012b(emlrtRootTLSGlobal, false, 0U, NULL);
   emlrtEnterRtStackR2012b(emlrtRootTLSGlobal);
-  emlrtLicenseCheckR2012b(emlrtRootTLSGlobal, "optimization_toolbox", 2);
+  emlrtLicenseCheckR2022a(emlrtRootTLSGlobal,
+                          "EMLRT:runTime:MexFunctionNeedsLicense",
+                          "optimization_toolbox", 2);
   if (emlrtFirstTimeR2012b(emlrtRootTLSGlobal)) {
     optimize_cpp_once();
   }

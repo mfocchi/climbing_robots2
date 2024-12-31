@@ -1,6 +1,6 @@
 /*
- * Non-Degree Granting Education License -- for use at non-degree
- * granting, nonprofit, educational organizations only. Not for
+ * Academic License - for use in teaching, academic research, and meeting
+ * course requirements at degree granting institutions only.  Not for
  * government, commercial, or other organizational use.
  *
  * timeKeeper.c
@@ -17,13 +17,16 @@
 
 /* Variable Definitions */
 static emlrtTimespec savedTime;
+
 static boolean_T savedTime_not_empty;
 
 /* Function Definitions */
-void b_timeKeeper(real_T *outTime_tv_sec, real_T *outTime_tv_nsec)
+real_T b_timeKeeper(real_T *outTime_tv_nsec)
 {
-  *outTime_tv_sec = savedTime.tv_sec;
+  real_T outTime_tv_sec;
+  outTime_tv_sec = savedTime.tv_sec;
   *outTime_tv_nsec = savedTime.tv_nsec;
+  return outTime_tv_sec;
 }
 
 void savedTime_not_empty_init(void)
@@ -37,7 +40,6 @@ void timeKeeper(const emlrtTimespec newTime)
     emlrtClockGettimeMonotonic(&savedTime);
     savedTime_not_empty = true;
   }
-
   savedTime = newTime;
 }
 
