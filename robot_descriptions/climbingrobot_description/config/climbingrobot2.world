@@ -11,6 +11,8 @@
           </sky>
       </scene>
     <physics type='ode'>
+    
+       
 
       <real_time_update_rate>100.0</real_time_update_rate>
       <!-- max step size has to be a multiple of the desired task rate-->
@@ -68,5 +70,18 @@
             </visual>
           </link>
     </model>
+
+    
+    
+    <gui fullscreen='0'>
+     <show_origin>false</show_origin>
+      <camera name='user_camera'>
+         <pose>5.2233 -14.1 20.0642 0 0.305796 1.6162</pose>
+        <view_controller>orbit</view_controller>
+        <projection_type>perspective</projection_type>
+      </camera>
+    </gui>
+    
+    
   </world>
 </sdf>

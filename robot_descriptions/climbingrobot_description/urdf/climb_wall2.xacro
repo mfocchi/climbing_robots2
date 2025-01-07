@@ -31,9 +31,12 @@
 <xacro:arg name="wall_inclination" default="0.0"/>
 
 	
-<xacro:arg name="obstacle_x" default="-0.5"/>
-<xacro:arg name="obstacle_y" default="2.5"/>
-<xacro:arg name="obstacle_z" default="-6"/>
+<xacro:arg name="obstacle_location_x" default="-0.5"/>
+<xacro:arg name="obstacle_location_y" default="2.5"/>
+<xacro:arg name="obstacle_location_z" default="-6"/>
+<xacro:arg name="obstacle_size_x" default="1.5"/>
+<xacro:arg name="obstacle_size_y" default="1.5"/>
+<xacro:arg name="obstacle_size_z" default="0.866"/>
 
 
 
@@ -45,7 +48,7 @@
   	     </inertial>
 
 		<visual > <!-- dont put name otherwise gazebo discards color-->
- 			<origin xyz="${$(arg anchorZ)/2 *sin($(arg wall_inclination))}  0 ${$(arg anchorZ)/2}" rpy="0  -$(arg wall_inclination) 0"/>
+ 			<origin xyz="${$(arg anchorZ)/2 *sin($(arg wall_inclination))}  0 ${$(arg anchorZ) * (1-0.5*cos($(arg wall_inclination)))}" rpy="0  -$(arg wall_inclination) 0"/>
 			<geometry>
 				<box size="0.1 $(arg anchorZ) $(arg anchorZ)"/>
 			</geometry>
@@ -53,7 +56,7 @@
 			
 		</visual>
 	        <collision name="box">
-		       <origin xyz="${$(arg anchorZ)/2 *sin($(arg wall_inclination))} 0 ${$(arg anchorZ)/2}" rpy="0  -$(arg wall_inclination) 0"/>
+		       <origin xyz="${$(arg anchorZ)/2 *sin($(arg wall_inclination))} 0 ${$(arg anchorZ) * (1-0.5*cos($(arg wall_inclination)))}" rpy="0  -$(arg wall_inclination) 0"/>
 		       <geometry>
  				<box size="0.1 $(arg anchorZ) $(arg anchorZ)"/>
 	        	</geometry>
@@ -102,19 +105,19 @@
   	        </inertial>
 
 		<visual > <!-- dont put name otherwise gazebo discards color-->
- 			  <origin rpy="0 0 0" xyz="$(arg obstacle_x) $(arg obstacle_y)  ${$(arg anchorZ) + $(arg obstacle_z)} "/>
+ 			  <origin rpy="0 0 0" xyz="$(arg obstacle_location_x) $(arg obstacle_location_y)  ${$(arg anchorZ) + $(arg obstacle_location_z)} "/>
 			<geometry>
 			
-	                  <mesh filename="package://climbingrobot_description/meshes/ellipsoid.stl" scale="1 1 1"/>
+	                  <mesh filename="package://climbingrobot_description/meshes/ellipsoid.stl" scale="${$(arg obstacle_size_x)/1.5}  ${$(arg obstacle_size_y)/1.5}  ${$(arg obstacle_size_z)/0.866} "/>
 	                </geometry>
 			 <material name="orange"/>
 		
 		</visual>
 		<collision>
-			<origin rpy="0 0 0" xyz="$(arg obstacle_x) $(arg obstacle_y)  ${$(arg anchorZ) + $(arg obstacle_z)} "/>
+			<origin rpy="0 0 0" xyz="$(arg obstacle_location_x) $(arg obstacle_location_y)  ${$(arg anchorZ) + $(arg obstacle_location_z)} "/>
 			 <geometry>
 			 
-	                  <mesh filename="package://climbingrobot_description/meshes/ellipsoid.stl" scale="1 1 1"/>
+	                  <mesh filename="package://climbingrobot_description/meshes/ellipsoid.stl" scale="${$(arg obstacle_size_x)/1.5}  ${$(arg obstacle_size_y)/1.5}  ${$(arg obstacle_size_z)/0.866} "/>
 	                </geometry>			               
 
 	       </collision>

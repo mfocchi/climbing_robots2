@@ -3,6 +3,8 @@
        <arg name="task_period" default="0.004"/>
        <arg name="robot_name" default="climbingrobot2"/>
 
+	<arg name="wall_inclination" default="0.0"/>
+
        <arg name="spawn_x" default="0."/>	
        <arg name="spawn_y" default="0."/>	
        <arg name="spawn_z" default="20."/>	
@@ -11,14 +13,19 @@
        <arg name="spawn_2y" default="5."/>	
        <arg name="spawn_2z" default="20"/>	
        <arg name="obstacle" default="false"/>	
-	<arg name="obstacle_x" default="-0.5"/>	
-	<arg name="obstacle_y" default="2.5"/>	
-	<arg name="obstacle_z" default="-6"/>	
+	<arg name="obstacle_location_x" default="-0.5"/>	
+	<arg name="obstacle_location_y" default="2.5"/>	
+	<arg name="obstacle_location_z" default="-6"/>	
+	<arg name="obstacle_size_x" default="1.5"/>	
+	<arg name="obstacle_size_y" default="1.5"/>	
+	<arg name="obstacle_size_z" default="0.866"/>	
+	<arg name="double_propeller" default="false"/>	
 
 
         <!-- send hyq urdf to param server -->
         <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find climbingrobot_description)/urdf/$(arg robot_name).xacro' 
-						task_period:=$(arg task_period)  anchorX:=$(arg spawn_x)  anchorY:=$(arg spawn_y) anchorZ:=$(arg spawn_z)  anchor2X:=$(arg spawn_2x)  anchor2Y:=$(arg spawn_2y)  anchor2Z:=$(arg spawn_2z)"/>
+						task_period:=$(arg task_period)  anchorX:=$(arg spawn_x)  anchorY:=$(arg spawn_y) anchorZ:=$(arg spawn_z)  
+						anchor2X:=$(arg spawn_2x)  anchor2Y:=$(arg spawn_2y)  anchor2Z:=$(arg spawn_2z) double_propeller:=$(arg double_propeller)"/>
 
 
         <!-- send hyq semantic description srdf to param server -->
@@ -27,8 +34,9 @@
 
 
 	<!--  load climb wall into param server-->	
-	<param name="climb_wall" command="$(find xacro)/xacro --inorder '$(find climbingrobot_description)/urdf/climb_wall2.xacro'  anchorZ:=$(arg spawn_z)   
-										obstacle:=$(arg obstacle) obstacle_locationX:=$(arg obstacle_x)  obstacle_locationY:=$(arg obstacle_y)  obstacle_locationZ:=$(arg obstacle_z)  "/>
+	<param name="climb_wall" command="$(find xacro)/xacro --inorder '$(find climbingrobot_description)/urdf/climb_wall2.xacro'  anchorZ:=$(arg spawn_z)   wall_inclination:=$(arg wall_inclination)   
+										obstacle:=$(arg obstacle) obstacle_location_x:=$(arg obstacle_location_x)  obstacle_location_y:=$(arg obstacle_location_y)  
+										obstacle_location_z:=$(arg obstacle_location_z) obstacle_size_x:=$(arg obstacle_size_x)  obstacle_size_y:=$(arg obstacle_size_y) obstacle_size_z:=$(arg obstacle_size_z)"/>
 
 
         

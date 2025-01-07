@@ -236,7 +236,7 @@
 
 
    <joint name="anchor2_position" type="fixed">
-        <origin rpy="0 0 0" xyz="0 $(arg anchor2Y) 0"/>
+        <origin rpy="0 0 0" xyz="0 ${$(arg anchor2Y)-$(arg anchorY)} 0"/>
         <parent link="anchor"/>
         <child link="anchor_2"/>
     </joint>

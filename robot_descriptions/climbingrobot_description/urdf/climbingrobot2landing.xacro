@@ -17,6 +17,8 @@
    <xacro:arg name="hoist_distance" default="0.1"/>	
    <xacro:arg name="hoist_base_distanceZ" default="0.05"/>
    <xacro:arg name="lowerleg_landing_length" default="0.3"/>
+   
+    <xacro:arg name="double_propeller" default="false"/>	
 
     <xacro:property name="WHEEL_pos" value="0.10183" />
 
@@ -236,7 +238,7 @@
 
 
    <joint name="anchor2_position" type="fixed">
-        <origin rpy="0 0 0" xyz="0 $(arg anchor2Y) 0"/>
+        <origin rpy="0 0 0" xyz="0 ${$(arg anchor2Y)-$(arg anchorY)} 0"/>
         <parent link="anchor"/>
         <child link="anchor_2"/>
     </joint>
@@ -688,8 +690,8 @@
 
                <inertial>
                     <origin xyz="0 0 0" rpy="0 0 0"/>
-                    <mass value="0.00693606"/>
-                    <inertia ixx="0.00000057" ixy="0.0" ixz="0.0" iyy="0.00000084" iyz="0.0" izz="0.00000053"/>
+                    <mass value="0.5"/>
+                   <inertia ixx="0.00001" ixy="0.0" ixz="0.0" iyy="0.00001" iyz="0.0" izz="0.00001"/>
                 </inertial>
         </link>
 
@@ -726,8 +728,8 @@
 
                <inertial>
                     <origin xyz="0 0 0" rpy="0 0 0"/>
-                    <mass value="0.00693606"/>
-                    <inertia ixx="0.00000057" ixy="0.0" ixz="0.0" iyy="0.00000084" iyz="0.0" izz="0.00000053"/>
+                    <mass value="0.5"/>
+                    <inertia ixx="0.00001" ixy="0.0" ixz="0.0" iyy="0.00001" iyz="0.0" izz="0.00001"/>
                 </inertial>
         </link>
 
@@ -912,7 +914,13 @@
   <!-- Joint between the base and the ${prefix} upper leg -->
 
    <xacro:include filename="$(find climbingrobot_description)/urdf/gazebo.urdf.xacro"/>
-
+   
+   <xacro:unless value="$(arg double_propeller)">
+   	<xacro:include filename="$(find climbingrobot_description)/urdf/propellers.urdf.xacro"/>
+   </xacro:unless>   
+   <xacro:if value="$(arg double_propeller)">
+         <xacro:include filename="$(find climbingrobot_description)/urdf/propellers_couple.urdf.xacro"/>	
+   </xacro:if>
    <xacro:climbingrobot_transmission/>
 
 </robot>

@@ -4,27 +4,32 @@
 	<arg name="rviz_conf" default="$(find climbingrobot_description)/rviz/conf.rviz"/>
 	<arg name="robot_name" default="climbingrobot2"/>
 	<arg name="obstacle" default="false"/>
-
-       <arg name="spawn_x" default="0."/>	
-       <arg name="spawn_y" default="0."/>	
-       <arg name="spawn_z" default="20."/>
-       <arg name="spawn_2x" default="0."/>	
-       <arg name="spawn_2y" default="5."/>	
-       <arg name="spawn_2z" default="20"/>	
-
-
+	<arg name="wall_inclination" default="0."/>
+	<arg name="obstacle_location_x" default="0."/>
+	<arg name="obstacle_location_y" default="0."/>
+	<arg name="obstacle_location_z" default="0."/>
+	<arg name="obstacle_size_x" default="0."/>
+	<arg name="obstacle_size_y" default="0."/>
+	<arg name="obstacle_size_z" default="0."/>
+	<arg name="double_propeller" default="false"/>
+                          
+                 
 	<env name="GAZEBO_MODEL_PATH" value="$(find climbingrobot_description)"/>
 
 	<!-- send hyq urdf to param server and spawn it -->
 	<include file="$(find climbingrobot_description)/launch/upload.launch">	
 		<arg name="robot_name" value="$(arg robot_name)" />
+		<arg name="wall_inclination" value="$(arg wall_inclination)" />
 		<arg name="obstacle" value="$(arg obstacle)" />
-	       <arg name="spawn_x"   value="$(arg spawn_x)"/>	
-	       <arg name="spawn_y"   value="$(arg spawn_y)"/>	
-	       <arg name="spawn_z"   value="$(arg spawn_z)"/>
-	       <arg name="spawn_2x"  value="$(arg spawn_2x)"/>	
-	       <arg name="spawn_2y"  value="$(arg spawn_2y)"/>	
-	       <arg name="spawn_2z"  value="$(arg spawn_2z)"/>
+		<arg name="obstacle_location_x" value="$(arg obstacle_location_x)" />
+		<arg name="obstacle_location_y" value="$(arg obstacle_location_y)" />
+		<arg name="obstacle_location_z" value="$(arg obstacle_location_z)" />
+		<arg name="obstacle_size_x" value="$(arg obstacle_size_x)" />
+		<arg name="obstacle_size_y" value="$(arg obstacle_size_y)" />
+		<arg name="obstacle_size_z" value="$(arg obstacle_size_z)" />
+		<arg name="double_propeller" value="$(arg double_propeller)" />
+
+
 	</include>
 
 	<node pkg="tf" type="static_transform_publisher" name="world_broadcaster" args="0.1 0 0 0 0 0   /wall /world  200"/>
