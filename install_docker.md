@@ -15,7 +15,7 @@ $ ./install_docker.sh
   -  Download the docker image from here. It will be slow.
 
   ```
-  $ docker pull mfocchi/trento_lab_framework:introrob
+  $ docker pull mfocchi/trento_lab_framework:introrob_matlab
   ```
 
   - Now, you need to configure the bash environment of your Ubuntu machine as follows. Open the `bashrc` file from your home folder:
@@ -28,7 +28,7 @@ $ ./install_docker.sh
   -  and add the following lines at the bottom of the file:
 
   ```bash
-  alias lab='docker rm -f docker_container || true; docker run --name docker_container --gpus all  --user $(id -u):$(id -g)  --workdir="/home/$USER" --volume="/etc/group:/etc/group:ro"   --volume="/etc/shadow:/etc/shadow:ro"  --volume="/etc/passwd:/etc/passwd:ro" --device=/dev/dri:/dev/dri  -e "QT_X11_NO_MITSHM=1" --network=host --hostname=docker -it  --volume "/tmp/.X11-unix:/tmp/.X11-unix:rw" --volume $HOME/trento_lab_home:$HOME --env=HOME --env=USER  --privileged  -e SHELL --env="DISPLAY=$DISPLAY" --shm-size 2g --rm  --entrypoint /bin/bash mfocchi/trento_lab_framework:introrob'
+  alias lab='docker rm -f docker_container || true; docker run --name docker_container --gpus all  --user $(id -u):$(id -g)  --workdir="/home/$USER" --volume="/etc/group:/etc/group:ro"   --volume="/etc/shadow:/etc/shadow:ro"  --volume="/etc/passwd:/etc/passwd:ro" --device=/dev/dri:/dev/dri  -e "QT_X11_NO_MITSHM=1" --network=host --hostname=docker -it  --volume "/tmp/.X11-unix:/tmp/.X11-unix:rw" --volume $HOME/trento_lab_home:$HOME --env=HOME --env=USER  --privileged  -e SHELL --env="DISPLAY=$DISPLAY" --shm-size 2g --rm  --entrypoint /bin/bash mfocchi/trento_lab_framework:introrob_matlab'
   alias dock-other='docker exec -it docker_container /bin/bash'
   alias dock-root='docker exec -it --user root docker_container /bin/bash'
   ```
@@ -45,10 +45,11 @@ $ ./install_docker.sh
 
   - You should see your terminal change from `user@hostname` to `user@docker`. 
 
-  - the **lab** script will mount the folder `~/trento_lab_home` on your **host** computer. Inside of all of the docker images this folder is mapped to `$HOME`.This means that any files you place   in your docker $HOME folder will survive the stop/starting of a new docker container. All other files and installed programs will disappear on the next run.
+  - the **lab** script will mount the folder `~/trento_lab_home` on your **host** computer. Inside of all of the docker images this folder is mapped to `$HOME`.This means that any files you place   in your docker $HOME folder will survive the stop/starting of a new docker container. All other files and installed programs will disappear on the next run. 
+  - Copy your Matlab licence in the `~/trento_lab_home/matlab` folder
   - The alias **lab** needs to be called only ONCE and opens the image. To link other terminals to the same image you should run **dock-other**, this second command will "**attach**" to the image opened previously by calling the **lab** alias.  You can call **lab** only once and **dock-other** as many times you need to open multiple terminals.
 
-  **NOTE!** If you do not have an Nvidia card in your computer, you should skip the parts about the installation of the drivers, and you can still run the docker **without** the **--gpus all ** flag in the **lab** alias.
+  **NOTE!** If you do not have an Nvidia card in your computer, you should skip the parts about the installation of the drivers, and you can still run the docker **without** the **--gpus all ** flag in the **lab** alias. 
 
   - Now you need to edit the .bashrc script (that was created by the install script) **inside** the docker
 
@@ -79,7 +80,8 @@ $ ./install_docker.sh
   $ source .bashrc
   ```
 
-  
+
+
 Installing NVIDIA drivers (optional)
 --------------
 

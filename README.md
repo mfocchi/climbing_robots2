@@ -8,13 +8,13 @@ Michele Focchi, Andrea Del Prete,  Daniele Fontanelli, Marco Frego, Angelika Pee
 Corresponding author's email: Michele Focchi
 
 This repository is a reduced version of [Locosim](https://github.com/mfocchi/locosim) ([preprint](https://arxiv.org/abs/2305.02107)) and it is intended for reproducing simulations and experiments
-presented in the manuscript : TBD
+presented in the manuscript: ALPINE: A cLimbing robot for oPerations In mouNtain environmEnts  ([preprint](https://arxiv.org/abs/2403.15142))  
 
 To run the optimization part of the code a Matlab license is required. 
 
 # Installing the code
 
-To install natively the code follow these detailed installation [instructions](https://github.com/mfocchi/climbing_robots2/tree/master/install_native.md). However, we strongly suggest to install the following docker image to avoid  compatibility issues. To see how to install the docker image follow these [instructions](https://github.com/mfocchi/climbing_robots2/tree/master/install_docker.md). 
+To install natively the code follow these detailed installation [instructions](https://github.com/mfocchi/climbing_robots2/tree/master/install_native.md). However, we strongly suggest to install a docker image to avoid  compatibility issues. To see how to install the docker image follow these [instructions](https://github.com/mfocchi/climbing_robots2/tree/master/install_docker.md). 
 
 
 
