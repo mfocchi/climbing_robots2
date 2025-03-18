@@ -30,7 +30,7 @@ $ ./install_docker.sh
   ```bash
   alias lab='docker rm -f docker_container || true; docker run --name docker_container --gpus all  --user $(id -u):$(id -g)  --workdir="/home/$USER" --volume="/etc/group:/etc/group:ro"   --volume="/etc/shadow:/etc/shadow:ro"  --volume="/etc/passwd:/etc/passwd:ro" --device=/dev/dri:/dev/dri  -e "QT_X11_NO_MITSHM=1" --network=host --hostname=docker -it  --volume "/tmp/.X11-unix:/tmp/.X11-unix:rw" --volume $HOME/trento_lab_home:$HOME --env=HOME --env=USER  --privileged  -e SHELL --env="DISPLAY=$DISPLAY" --shm-size 2g --rm  --entrypoint /bin/bash mfocchi/trento_lab_framework:introrob_matlab'
   alias dock-other='docker exec -it docker_container /bin/bash'
-  alias dock-root='docker exec -it --user root docker_container /bin/bash'
+  alias dock-root='xhost +local:docker; docker exec -it --user root docker_container /bin/bash'
   ```
 
   where "/home/USER/PATH" is the folder you cloned the lab-docker repository. Make sure to edit the `LAB_DOCKER_PATH` variable with the path to where you cloned the `lab_docker` repository.
@@ -44,9 +44,10 @@ $ ./install_docker.sh
   ```
 
   - You should see your terminal change from `user@hostname` to `user@docker`. 
+  - (**NOTE!**: If you don't find your license in this path `cd /usr/local/MATLAB/R2023a/licenses`, check the section **Activate license for MATLAB**.)
 
   - the **lab** script will mount the folder `~/trento_lab_home` on your **host** computer. Inside of all of the docker images this folder is mapped to `$HOME`.This means that any files you place   in your docker $HOME folder will survive the stop/starting of a new docker container. All other files and installed programs will disappear on the next run. 
-  - Copy your Matlab licence in the `~/trento_lab_home/matlab` folder
+  - Copy your Matlab licence in the `~/trento_lab_home/matlab` folder.
   - The alias **lab** needs to be called only ONCE and opens the image. To link other terminals to the same image you should run **dock-other**, this second command will "**attach**" to the image opened previously by calling the **lab** alias.  You can call **lab** only once and **dock-other** as many times you need to open multiple terminals.
 
   **NOTE!** If you do not have an Nvidia card in your computer, you should skip the parts about the installation of the drivers, and you can still run the docker **without** the **--gpus all ** flag in the **lab** alias. 
@@ -80,7 +81,36 @@ $ ./install_docker.sh
   $ source .bashrc
   ```
 
+Activate license for Matlab
+--------------
+If you have online matlab license, you should to create a matlab license file (.lic), follow these steps:
 
+open a terminal and run docker with the `lab` alias, after that open another docker and run the `dock-root` alias, after that run the following command in root docker (or `dock-root`):
+
+```
+cd /usr/local/MATLAB/R2023a/bin
+./activate_matlab.sh 
+```
+After that, add your credentials. If you have university or online access, you should create a temporary password by following this link: [MathWorks Account](https://it.mathworks.com/mwaccount/).
+
+Then, follow these steps:
+
+1. Go to **my_account** → **Security settings** → **Generated temporary code**.
+2. Copy the temporary password and paste it into the password field.
+
+Finally, follow the steps indicated in MATLAB's GUI to create the license. In the **login name** field, enter the name used in Docker.
+
+Once created, it should appear in the following folder:
+
+```
+cd /usr/local/MATLAB/R2023a/licenses
+```
+You should find the license. Now, copy it into the **.matlab** folder.
+
+```
+cp license_docker_872052_R2023a.lic $HOME/.matlab/
+```
+and that it!
 
 Installing NVIDIA drivers (optional)
 --------------
