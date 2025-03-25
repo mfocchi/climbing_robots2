@@ -75,7 +75,7 @@ $ ./install_docker.sh
   $ source /opt/ros/noetic/setup.bash
   $ mkdir -p ~/ros_ws/src
   $ cd ~/ros_ws/src
-  $ git clone https://github.com/mfocchi/locosim  -b develop --recursive
+  $ git clone https://github.com/mfocchi/climbing_robots2  -b develop --recursive
   $ cd  ~/ros_ws/
   $ catkin_make install
   $ source .bashrc
