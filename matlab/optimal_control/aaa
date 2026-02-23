@@ -1,0 +1,23 @@
+Elapsed time is 0.825850 seconds
+semidefinite solution (should modify the cost)
+Fleg:  110.403053 165.107789 124.609178 
+
+cost:  1390.647595
+
+final_kin_energy:  26.437062
+
+final_error_real:  0.977655
+
+positive  number represent constraint violation
+Leg impulse force: 110.403053 165.107789 124.609178
+
+Jump Duration: 1.239606
+
+Landing Target: 0.605704 3.446385 -3.537932
+
+Energy_consumed [J]: 139.649550 
+
+Average Poiwer [W]: 112.652558 
+
+
+copying to locosim

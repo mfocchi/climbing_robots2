@@ -1,16 +1,3 @@
-# ALPINE: A cLimbing robot for oPerations In mouNtain environmEnts
-
-
-
-
-Michele Focchi, Andrea Del Prete,  Daniele Fontanelli, Marco Frego, Angelika Peer, Luigi Palopoli
-
-Corresponding author's email: Michele Focchi
-
-This repository is a reduced version of [Locosim](https://github.com/mfocchi/locosim) ([preprint](https://arxiv.org/abs/2305.02107)) and it is intended for reproducing simulations and experiments
-presented in the manuscript: ALPINE: A cLimbing robot for oPerations In mouNtain environmEnts  ([preprint](https://arxiv.org/abs/2403.15142))  
-
-To run the optimization part of the code a Matlab license is required. 
 
 # Installing the code
 
@@ -89,15 +76,6 @@ In both 2) and 3) it is possible to generate C++ just running first time the cod
 matlab/optimal_control/mpc/mpc_loop.m
 ```
 
-
-
-### Polytopes
-
-To run the code for the polytopes computation:
-
-```
-$ python3 -i $LOCOSIM_DIR/polytopes/fwp_climbing_robot.py
-```
 
 
 

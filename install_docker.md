@@ -33,9 +33,7 @@ $ ./install_docker.sh
   alias dock-root='xhost +local:docker; docker exec -it --user root docker_container /bin/bash'
   ```
 
-  where "/home/USER/PATH" is the folder you cloned the lab-docker repository. Make sure to edit the `LAB_DOCKER_PATH` variable with the path to where you cloned the `lab_docker` repository.
-
-  **NOTE!** If you do not have an Nvidia card in your computer, you should skip the parts about the installation of the drivers, and you can still run the docker **without** the **-nv** flag in the **lab** alias.
+   **NOTE!** If you do not have an Nvidia card in your computer, you should skip the parts about the installation of the drivers, and you can still run the docker **without** the **-nv** flag in the **lab** alias.
 
   - Open a terminal and run the "lab" alias:
 
@@ -64,7 +62,7 @@ $ ./install_docker.sh
     source /opt/ros/noetic/setup.bash
     source $HOME/ros_ws/install/setup.bash
     export PATH=/opt/openrobots/bin:$PATH
-    export LOCOSIM_DIR=$HOME/ros_ws/src/climbing_robots2
+    export LOCOSIM_DIR=$HOME/ros_ws/src/locosim
     export PYTHONPATH=/opt/openrobots/lib/python3.8/site-packages:$LOCOSIM_DIR/robot_control:$PYTHONPATH
     export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:/opt/openrobots/share/
     ```
@@ -75,7 +73,7 @@ $ ./install_docker.sh
   $ source /opt/ros/noetic/setup.bash
   $ mkdir -p ~/ros_ws/src
   $ cd ~/ros_ws/src
-  $ git clone https://github.com/mfocchi/climbing_robots2  -b develop --recursive
+  $ git clone git@github.com:mfocchi/climbing_robots2.git  -b multi-jump
   $ cd  ~/ros_ws/
   $ catkin_make install
   $ source .bashrc

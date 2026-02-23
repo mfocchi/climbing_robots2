@@ -20,9 +20,14 @@ import rospy as ros
 import rosnode
 import roslaunch
 import rosgraph
+import tf2_ros
+from geometry_msgs.msg import TransformStamped
 from roslaunch.parent import ROSLaunchParent
 import copy
 from base_controllers.utils.utils import Utils
+import subprocess
+import pinocchio
+from operator import itemgetter
 
 #from urdf_parser_py.urdf import URDF
 #make plot interactive
@@ -82,23 +87,390 @@ def checkRosMaster():
         parent = ROSLaunchParent("roscore", [], is_core=True)  # run_id can be any string
         parent.start()
 
-def startNode(node_name):
-    
+def launchFileNode(package,launch_file, additional_args=None):
+    launch_file = rospkg.RosPack().get_path(package) + '/launch/'+launch_file
+    uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
+    roslaunch.configure_logging(uuid)
+    cli_args = [launch_file]
+    if additional_args is not None:
+        cli_args.extend(additional_args)
+    roslaunch_args = cli_args[1:]
+    roslaunch_file = [(roslaunch.rlutil.resolve_launch_arguments(cli_args)[0], roslaunch_args)]
+    parent = roslaunch.parent.ROSLaunchParent(uuid, roslaunch_file)
+    parent.start()
+
+def launchFileGeneric(launch_file):
+    uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
+    roslaunch.configure_logging(uuid)
+    launch = roslaunch.parent.ROSLaunchParent(uuid, [launch_file])
+    launch.start()
+
+def startNode(package, executable, args=''):
     nodes = rosnode.get_node_names()
-    if "/reference_generator" in nodes:
-        print(colored("Re Starting ref generator","red"))
-        os.system("rosnode kill /"+node_name)
-    package = node_name
-    executable = node_name
-    name = node_name
+    #kill previous instances
+    if package in nodes:
+        print(colored(f"Killing previous {executable} node","red"))
+        os.system("rosnode kill /"+package)
+    package = package
+    executable = executable
+    name = package
     namespace = ''
-    node = roslaunch.core.Node(package, executable, name, namespace, output="screen")
+    node = roslaunch.core.Node(package, executable, name, namespace, args=args, output="screen")
     launch = roslaunch.scriptapi.ROSLaunch()
     launch.start()
     process = launch.launch(node)
 
 
-def getRobotModel(robot_name="hyq", generate_urdf = False, xacro_path = None, additional_urdf_args = None):
+def loadXacro(package_name, model_name):
+    print(colored(f"Loading xacro for  {model_name} inside {package_name}", "blue"))
+    # first generate robot description
+    xacro_path = rospkg.RosPack().get_path(package_name) + '/robots/' + model_name + '.urdf.xacro'
+    if not os.path.isfile(xacro_path):
+        print(colored(f"Xacro file {model_name}.urdf.xacro does not exist!", "red"))
+    command_string = "rosrun xacro xacro "+xacro_path
+
+    try:
+        robot_description_param = subprocess.check_output(command_string,shell=True,  stderr=subprocess.STDOUT).decode("utf-8") # shell=True is fundamental to load env variables!
+    except subprocess.CalledProcessError as process_error:
+        ros.logfatal('Failed to run xacro command with error: \n%s', process_error.output)
+        sys.exit(1)
+
+    # put on param server
+    ros.set_param('/'+model_name, robot_description_param)
+
+def spawnModel(package_name, model_name='',  spawn_pos=np.array([0.,0.,0.]), spawn_orient = np.array([0.,0.,0.]) ):
+    #loads the xacro of model in the parameter server
+    loadXacro(package_name, model_name)
+    print(colored(f"Spawning {model_name}", "blue"))
+    package = 'gazebo_ros'
+    executable = 'spawn_model'
+    name = model_name
+    namespace = '/'
+    args = '-urdf -param ' +model_name +' -model ' + model_name +' -x '+ str(spawn_pos[0])+ ' -y ' + str(spawn_pos[1]) +' -z ' + str(spawn_pos[2]) \
+           + ' -R ' + str(spawn_orient[0]) + ' -P ' + str(spawn_orient[1]) + ' -Y ' + str(spawn_orient[2])
+    node = roslaunch.core.Node(package, executable, name, namespace,args=args,output="screen")
+    launch = roslaunch.scriptapi.ROSLaunch()
+    launch.start()
+    process = launch.launch(node)
+
+def checkRosControllerRunning(controller = '', robot_name=''):
+    cmd = ["rosservice", "call", f"/{robot_name}/controller_manager/list_controllers"]
+    result = subprocess.check_output(cmd).decode()
+    if controller not in result or "state: \"running\"" not in result:
+        return False
+    else:
+        return True
+
+def spawnMesh(mesh_x, mesh_y, mesh_z, position=np.array([0,0,0]), texture_path=None):
+    try:
+        import meshio
+    except ImportError:
+        raise RuntimeError("You need to install meshio with: pip install meshio")
+    print(colored("Spawning mesh","red"))
+
+    # Build triangles
+    n_z = mesh_x.shape[0]
+    n_y = mesh_y.shape[0]
+
+    #Normals determine which side of a triangle is "front".
+    #RViz and Gazebo render only front-facing surfaces.
+    #By default, a triangle's normal is defined by vertex order: counter-clockwise (CCW) is "front".
+    #If your mesh:
+    # 1) is not a heightfield but rather an arbitrary 3D surface -> trimesh
+    # 2) is a heightfield but it has an unstructured set of 2D points (e.g., scattered or irregular) -> use  Delaunay2D matplotlib.tri.Triangulation(x, y) would flatten the grid
+    # 3) is a heightfield and you have a Structured meshgrid (you already know how the points are connected)-> you can just build triangles row by row
+    triangles = []
+    for j in range(n_y - 1):
+        for i in range(n_z - 1):
+            p1 = j * n_z + i
+            p2 = p1 + 1
+            p3 = p1 + n_z
+            p4 = p3 + 1
+            triangles.append([p3, p2, p1])
+            triangles.append([p3, p4, p2])
+
+    triangles = np.array(triangles)
+
+
+    # 3. Prepare data for meshio
+    points = np.column_stack((mesh_x.flatten(), mesh_y.flatten(), mesh_z.flatten()))
+
+    #debug/ visualize normals
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
+    # ax.plot_trisurf(points[:, 0], points[:, 1], points[:, 2], triangles=triangles, cmap='terrain', alpha=0.8)
+    # centers = []
+    # normals = []
+    # for tri in triangles:
+    #     p1, p2, p3 = points[tri[0]], points[tri[1]], points[tri[2]]
+    #     center = (p1 + p2 + p3) / 3
+    #     normal = np.cross(p2 - p1, p3 - p1)
+    #     normal /= np.linalg.norm(normal) + 1e-8  # normalize
+    #     centers.append(center)
+    #     normals.append(normal)
+    # centers = np.array(centers)
+    # normals = np.array(normals)
+    # # Scale normals for visibility
+    # normal_length = 0.05
+    # ax.quiver(centers[:, 0], centers[:, 1], centers[:, 2],
+    #           normals[:, 0], normals[:, 1], normals[:, 2],
+    #           length=normal_length, color='red', normalize=True)
+    # # Adjust view
+    # ax.set_xlabel("X (height)")
+    # ax.set_ylabel("Y")
+    # ax.set_zlabel("Z")
+    # ax.view_init(elev=45, azim=135)
+    # plt.title("Mesh with Face Normals")
+    # plt.show()
+
+    # Always write STL (collision + fallback visual)
+    tmp_stl_path = "/tmp/runtime_mesh.stl"
+    mesh = meshio.Mesh(points=points, cells=[("triangle", triangles)])
+    mesh.write(tmp_stl_path)
+
+    # Optionally write textured DAE for RViz
+    if texture_path is not None:
+        tmp_obj_path = "/tmp/runtime_mesh.obj"
+        write_textured_obj(points, triangles, tmp_obj_path, texture_path)
+        # Use OBJ (textured) for VISUAL
+        visual_uri = f"file://{tmp_obj_path}"
+        material_block = ""  # DO NOT override texture
+    else:
+        visual_uri = f"file://{tmp_stl_path}"
+        #use standard reddish material
+        material_block = """
+                <material>
+                  <ambient>0.545 0.271 0.075 1.0</ambient>
+                  <diffuse>0.545 0.271 0.075 1.0</diffuse>
+                  <specular>0.1 0.1 0.1 1.0</specular>
+                  <emissive>0.4 0.2 0.1 1.0</emissive>
+                </material>
+        """
+
+    # === Step 3: Spawn in Gazebo ===
+    sdf_template = f"""
+    <sdf version="1.6">
+      <model name="runtime_mesh">
+        <static>true</static>
+        <link name="link">
+          <visual name="visual">
+            <geometry>
+              <mesh>
+                <uri>file://{visual_uri}</uri>
+              </mesh>
+            </geometry>
+            {material_block}
+          </visual>
+          <collision name="collision">
+            <geometry>
+              <mesh>
+                <uri>file://{tmp_stl_path}</uri>
+              </mesh>
+            </geometry>
+          </collision>
+        </link>
+      </model>
+    </sdf>
+    """
+
+    sdf_path = "/tmp/runtime_mesh.sdf"
+    with open(sdf_path, 'w') as f:
+        f.write(sdf_template)
+    try:
+        command_string = [
+            "rosrun", "gazebo_ros", "spawn_model",
+            "-file", sdf_path,
+            "-sdf", "-model", "runtime_mesh",
+            "-x", f"{position[0]}", "-y", f"{position[1]}", "-z", f"{position[2]}"
+        ]
+        subprocess.run(command_string, stdout=sys.stdout, stderr=sys.stderr, check=True)
+    except subprocess.CalledProcessError as process_error:
+        ros.logfatal('Failed to run spawnModel command with error: \n%s', process_error.output)
+        sys.exit(1)
+
+# writes the texture in addition to the mesh
+def write_textured_obj(points, triangles, obj_path, texture_path):
+    import os, shutil
+    import numpy as np
+
+    obj_dir = os.path.dirname(obj_path)
+    base = os.path.splitext(os.path.basename(obj_path))[0]
+    mtl_name = base + ".mtl"
+    mtl_path = os.path.join(obj_dir, mtl_name)
+
+    # Copy texture next to OBJ
+    tex_name = os.path.basename(texture_path)
+    tex_dst = os.path.join(obj_dir, tex_name)
+    if os.path.abspath(texture_path) != os.path.abspath(tex_dst):
+        shutil.copy(texture_path, tex_dst)
+
+    # ---- UVs (planar) ----
+    x, y = points[:, 0], points[:, 1]
+    x0, x1 = x.min(), x.max()
+    y0, y1 = y.min(), y.max()
+    u = (x - x0) / max(x1 - x0, 1e-6)
+    v = 1.0 - (y - y0) / max(y1 - y0, 1e-6)
+    uvs = np.column_stack([u, v])
+
+    # ---- normals ----
+    normals = compute_vertex_normals(points, triangles)
+
+    # ---- MTL ----
+    with open(mtl_path, "w") as f:
+        f.write("newmtl rock_material\n")
+        f.write("Ka 1.0 1.0 1.0\n")
+        f.write("Kd 1.0 1.0 1.0\n")
+        f.write("Ks 0.2 0.2 0.2\n")
+        f.write("Ns 50.0\n")
+        f.write(f"map_Kd {tex_name}\n")
+
+    # ---- OBJ ----
+    with open(obj_path, "w") as f:
+        f.write(f"mtllib {mtl_name}\n")
+        f.write("usemtl rock_material\n")
+
+        for p in points:
+            f.write(f"v {p[0]} {p[1]} {p[2]}\n")
+
+        for uv in uvs:
+            f.write(f"vt {uv[0]} {uv[1]}\n")
+
+        for n in normals:
+            f.write(f"vn {n[0]} {n[1]} {n[2]}\n")
+
+        # faces: v / vt / vn
+        for tri in triangles:
+            a, b, c = tri + 1
+            f.write(f"f {a}/{a}/{a} {b}/{b}/{b} {c}/{c}/{c}\n")
+
+def compute_vertex_normals(points, triangles):
+    normals = np.zeros_like(points)
+
+    for tri in triangles:
+        p0, p1, p2 = points[tri]
+        n = np.cross(p1 - p0, p2 - p0)
+        norm = np.linalg.norm(n)
+        if norm > 1e-12:
+            n /= norm
+        for idx in tri:
+            normals[idx] += n
+
+    # normalize
+    norms = np.linalg.norm(normals, axis=1)
+    norms[norms == 0] = 1.0
+    normals /= norms[:, None]
+    return normals
+
+def sendStaticTransform(parent, child, x_pos = np.zeros(3), quat=np.array([1,0,0,0]), static_broadcaster=None):
+    static_transformStamped = TransformStamped()
+    static_transformStamped.header.stamp = ros.Time.now()
+    static_transformStamped.header.frame_id = parent
+    static_transformStamped.child_frame_id = child
+    static_transformStamped.transform.translation.x = 0.
+    static_transformStamped.transform.translation.y = 0.
+    static_transformStamped.transform.translation.z = 0.
+    static_transformStamped.transform.rotation.x = 0
+    static_transformStamped.transform.rotation.y = 0
+    static_transformStamped.transform.rotation.z = 0
+    static_transformStamped.transform.rotation.w = 1
+    if static_broadcaster is None:
+        static_broadcaster = tf2_ros.StaticTransformBroadcaster()
+    static_broadcaster.sendTransform(static_transformStamped)
+
+def getRobotModelFloating(robot_name="hyq"):
+    ERROR_MSG = 'You should set the environment variable LOCOSIM_DIR"\n'
+    path = os.environ.get('LOCOSIM_DIR', ERROR_MSG)
+    if rosgraph.is_master_online():
+        try:
+            urdf = ros.get_param('/robot_description', None) or ros.get_param('/' + robot_name + '/robot_description', None)
+        except:
+            print('Failed to retrieve robot_description: issues in URDF generation for Pinocchio, did not succeed')
+            loadXacro(package_name=robot_name+"_description",model_name=robot_name)
+            #urdf = ros.get_param('/robot_description')
+        print("URDF generated_commons")
+        os.makedirs(path + "/robot_urdf/generated_urdf/", exist_ok=True)
+        urdf_location = path + "/robot_urdf/generated_urdf/" + robot_name + ".urdf"
+        print(urdf_location)
+        text_file = open(urdf_location, "w")
+        text_file.write(urdf)
+        text_file.close()
+        robot = RobotWrapper.BuildFromURDF(urdf_location, root_joint=pinocchio.JointModelFreeFlyer())
+    else: #this is used when you run stuff online (i.e. unit tests)
+        try:
+            urdf_location = path + "/robot_urdf/generated_urdf/" + robot_name + ".urdf"
+            robot = RobotWrapper.BuildFromURDF(urdf_location, root_joint=pinocchio.JointModelFreeFlyer())
+        except:
+            print('you are running offline, urdf is not present in robot_urdf/generated_urdf folder')
+
+    return robot
+
+
+def getRobotModel(robot_name="hyq", generate_urdf=False, xacro_path=None, additional_urdf_args=None):
+    ERROR_MSG = 'You should set the environment variable LOCOSIM_DIR"\n'
+    path = os.environ.get('LOCOSIM_DIR', ERROR_MSG)
+    srdf = path + "/robot_urdf/" + robot_name + ".srdf"
+
+    if (generate_urdf):
+        try:
+            # old way
+            if (xacro_path is None):
+                xacro_path = rospkg.RosPack().get_path(
+                    robot_name + '_description') + '/robots/' + robot_name + '.urdf.xacro'
+
+            package = 'xacro'
+            executable = 'xacro'
+            name = 'xacro'
+            namespace = '/'
+            # with gazebo 11 you should set in the ros_impedance_controllerXX.launch the new_gazebo_version = true
+            # note we generate the urdf with the floating base joint (new gazebo version should be false by default in the xacro of the robot! because Pinocchio needs it!
+            args = xacro_path + ' --inorder -o ' + os.environ[
+                'LOCOSIM_DIR'] + '/robot_urdf/generated_urdf/' + robot_name + '.urdf'
+
+            try:
+                flywheel = ros.get_param('/flywheel4')
+                args += ' flywheel4:=' + flywheel
+            except:
+                pass
+
+            try:
+                flywheel2 = ros.get_param('/flywheel2')
+                args += ' flywheel2:=' + flywheel2
+            except:
+                pass
+
+            try:
+                angle = ros.get_param('/angle_deg')
+                args += ' angle_deg:=' + angle
+            except:
+                pass
+
+            try:
+                anchorZ = ros.get_param('/anchorZ')
+                args += ' anchorZ:=' + anchorZ
+            except:
+                pass
+
+            if additional_urdf_args is not None:
+                args += ' ' + additional_urdf_args
+
+            os.system("rosrun xacro xacro " + args)
+            # os.system("rosparam get /robot_description > "+os.environ['LOCOSIM_DIR']+'/robot_urdf/'+robot_name+'.urdf')
+            # urdf = URDF.from_parameter_server()
+            print("URDF generated_commons")
+            urdf_location = path + "/robot_urdf/generated_urdf/" + robot_name + ".urdf"
+            print(urdf_location)
+            robot = RobotWrapper.BuildFromURDF(urdf_location)
+            print("URDF loaded in Pinocchio")
+        except:
+            print('Issues in URDF generation for Pinocchio, did not succeed')
+    else:
+
+        urdf = path + "/robot_urdf/" + robot_name + ".urdf"
+        robot = RobotWrapper.BuildFromURDF(urdf, [path, srdf])
+
+    return robot
+
+def getRobotModel(robot_name="hyq", generate_urdf = False, xacro_path = None, additional_urdf_args = None, floating_base=False):
     ERROR_MSG = 'You should set the environment variable LOCOSIM_DIR"\n';
     path  = os.environ.get('LOCOSIM_DIR', ERROR_MSG)
     srdf      = path + "/robot_urdf/" + robot_name + ".srdf"
@@ -152,7 +524,10 @@ def getRobotModel(robot_name="hyq", generate_urdf = False, xacro_path = None, ad
             print("URDF generated_commons")
             urdf_location      = path + "/robot_urdf/generated_urdf/" + robot_name+ ".urdf"
             print(urdf_location)
-            robot = RobotWrapper.BuildFromURDF(urdf_location)
+            if floating_base:
+                robot = RobotWrapper.BuildFromURDF(urdf_location, root_joint=pinocchio.JointModelFreeFlyer())
+            else:
+                robot = RobotWrapper.BuildFromURDF(urdf_location)
             print("URDF loaded in Pinocchio")
         except:
             print ('Issues in URDF generation for Pinocchio, did not succeed')
@@ -163,7 +538,63 @@ def getRobotModel(robot_name="hyq", generate_urdf = False, xacro_path = None, ad
     
     return robot                    
 
+class SafeTFBroadcaster:
+    ''' avoids the annoying TF_REPEATED issue when the message is published twice with the same timestamp '''
+    def __init__(self):
+        self.br = tf2_ros.TransformBroadcaster()
+        self.last_stamp = ros.Time(0)
+        self.last_payload = None  # (tx,ty,tz,qx,qy,qz,qw)
+        # If sim time is enabled, wait until /clock has published
+        if ros.get_param("/use_sim_time", False):
+            while ros.Time.now() == ros.Time(0) and not ros.is_shutdown():
+                ros.sleep(0.01)
+    def sendTransform(self, trans, quat, stamp, child="base_link", parent="world"):
+        # 1) enforce monotonic time
+        if stamp <= self.last_stamp:
+            stamp = self.last_stamp + ros.Duration(nsecs=1)
 
+        # 2) translation: flatten + check
+        trans = np.asarray(trans).flatten()
+        if trans.shape[0] != 3:
+            raise ValueError(f"Translation must have 3 elements, got {trans}")
+
+        # 3) quaternion: unwrap, flatten + check
+        if hasattr(quat, "coeffs"):  # Pinocchio Quaternion
+            quat = quat.coeffs()
+        if len(quat) == 1 and isinstance(quat[0], (tuple, list, np.ndarray)):
+            quat = quat[0]
+
+        quat = np.asarray(quat).flatten()
+        if quat.shape[0] != 4:
+            raise ValueError(f"Quaternion must have 4 elements (x,y,z,w), got {quat}")
+
+        # normalize (optional but safe)
+        norm = np.linalg.norm(quat)
+        if not np.isclose(norm, 1.0, atol=1e-6) and norm > 0:
+            quat = quat / norm
+
+        # 4) skip exact duplicates
+        payload = tuple(trans) + tuple(quat)
+        if self.last_payload == payload and stamp == self.last_stamp:
+            return
+
+        # 5) build message
+        msg = TransformStamped()
+        msg.header.stamp = stamp
+        msg.header.frame_id = parent
+        msg.child_frame_id = child
+        msg.transform.translation.x, msg.transform.translation.y, msg.transform.translation.z = trans
+        msg.transform.rotation.x, msg.transform.rotation.y, msg.transform.rotation.z, msg.transform.rotation.w = quat
+
+        # 6) broadcast
+        self.br.sendTransform(msg)
+
+        # 7) update state
+        self.last_stamp = stamp
+        self.last_payload = payload
+
+
+#plot functions
 def subplot(n_rows, n_cols, n_subplot, sharex=False, sharey=False, ax_to_share=None):
     if sharex and sharey:
         ax = plt.subplot(n_rows, n_cols, n_subplot, sharex=ax_to_share, sharey=ax_to_share)
@@ -176,9 +607,10 @@ def subplot(n_rows, n_cols, n_subplot, sharex=False, sharey=False, ax_to_share=N
     return ax
 
 def plotJoint(name, time_log, q_log=None, q_des_log=None, qd_log=None, qd_des_log=None, qdd_log=None, qdd_des_log=None, tau_log=None, tau_ffwd_log = None, tau_des_log = None, joint_names = None, q_adm = None,
-              sharex=False, sharey=False, start=0, end=-1):
+              sharex=True, sharey=False, start=0, end=-1, title=None, subset_index=None):
+    plot_var_log = None
     plot_var_des_log = None
-    if name == 'position':
+    if name=='position':
         unit = '[rad]'
         if   (q_log is not None):
             plot_var_log = q_log
@@ -189,7 +621,7 @@ def plotJoint(name, time_log, q_log=None, q_des_log=None, qd_log=None, qd_des_lo
         else:
             plot_var_des_log = None
 
-    elif name == 'velocity':
+    if name=='velocity':
         unit = '[rad/s]'
         if   (qd_log is not None):
             plot_var_log = qd_log
@@ -200,7 +632,7 @@ def plotJoint(name, time_log, q_log=None, q_des_log=None, qd_log=None, qd_des_lo
         else:
             plot_var_des_log = None
 
-    elif name == 'acceleration':
+    if name=='acceleration':
         unit = '[rad/s^2]'
         if   (qdd_log is not None):
             plot_var_log = qdd_log
@@ -211,7 +643,7 @@ def plotJoint(name, time_log, q_log=None, q_des_log=None, qd_log=None, qd_des_lo
         else:
             plot_var_des_log = None
 
-    elif name == 'torque':
+    if name=='torque':
         unit = '[Nm]'
         if   (tau_log is not None):
             plot_var_log = tau_log
@@ -221,9 +653,6 @@ def plotJoint(name, time_log, q_log=None, q_des_log=None, qd_log=None, qd_des_lo
             plot_var_des_log  = tau_des_log
         else:
           plot_var_des_log = None                                                
-    else:
-       print(colored("plotJoint error: wrong input string", "red") )
-       return
 
     dt = np.round(time_log[1] - time_log[0], 3)
     if type(start) == str:
@@ -235,13 +664,19 @@ def plotJoint(name, time_log, q_log=None, q_des_log=None, qd_log=None, qd_des_lo
         njoints = min(plot_var_log.shape)
     elif plot_var_des_log is not None:
         njoints = min(plot_var_des_log.shape)
+    else:
+        print("no log var has been defined")
 
     if len(plt.get_fignums()) == 0:
         figure_id = 1
     else:
         figure_id = max(plt.get_fignums())+1
-    fig = plt.figure(figure_id)                
-    fig.suptitle(name, fontsize=20)
+    fig = plt.figure(figure_id)
+
+    if title is not None:
+        fig.suptitle(title, fontsize=20)
+    else:
+        fig.suptitle(name, fontsize=20)
 
     if joint_names is None:
         if njoints <= 6:
@@ -252,8 +687,15 @@ def plotJoint(name, time_log, q_log=None, q_des_log=None, qd_log=None, qd_des_lo
             labels = labels_flywheel2
         if njoints == 16:
             labels = labels_flywheel4
+        subset_index = range(njoints)
     else:
-        labels = joint_names
+        if subset_index is None:
+            njoints = len(joint_names)
+            subset_index = range(njoints)
+            labels = joint_names
+        else:
+            njoints = len(subset_index)
+            labels = itemgetter(*subset_index)(joint_names)
 
     if (njoints % 3 == 0): #divisible by 3
         n_rows = int(njoints/ 3)
@@ -261,14 +703,12 @@ def plotJoint(name, time_log, q_log=None, q_des_log=None, qd_log=None, qd_des_lo
     elif (njoints % 2 == 0): #divisible by 2
         n_rows = int(njoints / 2)
         n_cols = 2
-        print(n_rows)
     else:  # put in a single columnn
         n_rows = njoints
         n_cols = 1
 
 
     for jidx in range(njoints):
-
         if jidx == 0:
             ax = subplot(n_rows, n_cols, jidx + 1)
         else:
@@ -281,15 +721,15 @@ def plotJoint(name, time_log, q_log=None, q_des_log=None, qd_log=None, qd_des_lo
         plt.ylabel(labels[jidx] + ' '+ unit)
 
         if name == 'torque' and tau_ffwd_log is not None:
-            plt.plot(time_log[start:end], tau_ffwd_log[jidx, start:end], linestyle='-', marker="o", markersize=marker_size, lw=lw_des,
+            plt.plot(time_log[start:end], tau_ffwd_log[subset_index[jidx], start:end], linestyle='-', marker="o", markersize=marker_size, lw=lw_des,
                      color='green')
         if   (plot_var_des_log is not None):
-             plt.plot(time_log[start:end], plot_var_des_log[jidx, start:end], linestyle='-', marker="o",markersize=marker_size, lw=lw_des,color = 'red')
+             plt.plot(time_log[start:end], plot_var_des_log[subset_index[jidx], start:end], linestyle='-', marker="o",markersize=marker_size, lw=lw_des,color = 'red')
         if (plot_var_log is not None):
-            plt.plot(time_log[start:end], plot_var_log[jidx,start:end],linestyle='-',marker="o",markersize=marker_size, lw=lw_act,color = 'blue')
+            plt.plot(time_log[start:end], plot_var_log[subset_index[jidx],start:end],linestyle='-',marker="o",markersize=marker_size, lw=lw_act,color = 'blue')
 
         if (q_adm is not None):
-            plt.plot(time_log[start:end], q_adm[jidx, start:end], linestyle='-', marker="o", markersize=marker_size, lw=lw_act, color='black')
+            plt.plot(time_log[start:end], q_adm[subset_index[jidx], start:end], linestyle='-', marker="o", markersize=marker_size, lw=lw_act, color='black')
         plt.grid()
 
     if njoints == 12:
@@ -485,9 +925,10 @@ def plotFrame(name, time_log, des_Pose_log=None, Pose_log=None, des_Twist_log=No
     return fig
 
 def plotFrameLinear(name, time_log, des_Pose_log=None, Pose_log=None, des_Twist_log=None, Twist_log=None, des_Acc_log=None, Acc_log=None,
-              des_Wrench_log=None, Wrench_log=None, title=None, frame=None, sharex=True, sharey=True, start=0, end=-1):
+              des_Wrench_log=None, Wrench_log=None, title=None, frame=None, sharex=True, sharey=False, start=0, end=-1, wrapp_labels=None, custom_labels=None):
     plot_var_log = None
     plot_var_des_log = None
+    labels = ["", "", ""]
     if name == 'position':
         labels = ["x", "y", "z"]
         lin_unit = '[m]'
@@ -545,6 +986,9 @@ def plotFrameLinear(name, time_log, des_Pose_log=None, Pose_log=None, des_Twist_
                 plot_var_des_log = des_Wrench_log
     else:
        print("wrong choice")
+
+    if custom_labels is not None:
+        labels = custom_labels
 
     if title is None:
         title = name
@@ -715,7 +1159,7 @@ def plotFrameAngular(name, time_log, des_Pose_log=None, Pose_log=None, des_Twist
 
 
 def plotContacts(name, time_log, des_LinPose_log=None, LinPose_log=None, des_LinTwist_log=None, LinTwist_log=None, des_Forces_log=None,
-                 Forces_log=None, gt_Forces_log=None, contact_states=None, frame=None, sharex=True, sharey=True, start=0, end=-1):
+                 Forces_log=None, gt_Forces_log=None, contact_states=None, frame=None, sharex=True, sharey=True, start=0, end=-1, title=None):
     # %% Input plots
     plot_var_log = None
     plot_var_des_log = None
@@ -743,9 +1187,10 @@ def plotContacts(name, time_log, des_LinPose_log=None, LinPose_log=None, des_Lin
     else:
         print("wrong choice")
 
-    title = 'Contacts ' + name
-    if frame is not None:
-        title += ' ' + frame
+    if title is None:
+        title = 'Contacts ' + name
+        if frame is not None:
+            title += ' ' + frame
 
     dt = np.round(time_log[1] - time_log[0], 3)
     if type(start) == str:

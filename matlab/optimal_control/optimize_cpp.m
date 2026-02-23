@@ -1,35 +1,43 @@
 
-function solution = optimize_cpp(p0,  pf, Fleg_max, Fr_max, mu, params) 
+function solution = optimize_cpp(p0,  pf, Fleg_max, Fr_max, Fr_min, mu, params) 
     %make sure is column vector
     p0 = p0(:);
     pf = pf(:);
     dt = 0.001; %for eval solution
     
     % needs to be fixed for code generation
-    constr_tolerance = 1e-3;
+    constr_tolerance = 0.5e-2;
+    %constr_tolerance = 1e-3;
     
     dt=0.001; % only to evaluate solution
 
     %compute initial state from jump param
     x0 = computeStateFromCartesian(params, p0);
 
+    %created interpolant
+    Fcost=createInterpolant(params.cost_x, params.mesh_y, params.mesh_z);
+    Fmesh=createInterpolant(params.mesh_x, params.mesh_y, params.mesh_z);
+
+
     %pendulum period
     T_pend = 2*pi*sqrt(x0(2)/params.g)/4; % half period TODO replace with linearized x0(2) = l10
  
-    Fr_l0 = 0*ones(1,params.N_dyn);
-    Fr_r0 = 0*ones(1,params.N_dyn);
-    x0 = [  Fleg_max,  Fleg_max,  Fleg_max,        T_pend,  Fr_l0,                               Fr_r0]; %opt vars=   Flegx Flegy Flexz Tf  traj_Fr_l traj_Fr_r
+    Fr_l0 = -Fr_min*ones(1,params.N_dyn);
+    Fr_r0 = -Fr_min*ones(1,params.N_dyn);
+    x0 = [  Fleg_max,  Fleg_max,  Fleg_max,        T_pend,         Fr_l0,                               Fr_r0]; %opt vars=   Flegx Flegy Flexz Tf  traj_Fr_l traj_Fr_r
     lb = [  -Fleg_max,   -Fleg_max, -Fleg_max          0.01, -Fr_max*ones(1,params.N_dyn), -Fr_max*ones(1,params.N_dyn)];
-    ub = [  Fleg_max,    Fleg_max, Fleg_max,           inf,  0*ones(1,params.N_dyn),            0*ones(1,params.N_dyn)];
+    ub = [  Fleg_max,    Fleg_max, Fleg_max,           inf,  -Fr_min*ones(1,params.N_dyn), -Fr_min*ones(1,params.N_dyn)];
 
     options = optimoptions('fmincon','Display','iter','Algorithm','sqp',  ... % does not always satisfy bounds
     'MaxFunctionEvaluations', 10000, 'ConstraintTolerance', constr_tolerance);
 
+
     tic
-    [x, final_cost, EXITFLAG, output] = fmincon(@(x) cost(x, p0,  pf, params), x0,[],[],[],[],lb,ub,  @(x) constraints(x, p0,  pf, Fleg_max, Fr_max, mu, params) , options);
+    [x, final_cost, EXITFLAG, output] = fmincon(@(x) cost(x, p0,  pf, Fcost, params), x0,[],[],[],[],lb,ub,  @(x) constraints(x, p0,  pf, Fleg_max, Fr_max, mu, Fmesh, params) , options);
     toc
 
     solution = eval_solution(x, dt,  p0, pf, params) ;
+    solution.x = x;
     solution.T_th = params.T_th;
     solution.cost = final_cost;
     solution.problem_solved = EXITFLAG ;%(EXITFLAG == 1) || (EXITFLAG == 2);
@@ -41,11 +49,12 @@ function solution = optimize_cpp(p0,  pf, Fleg_max, Fr_max, mu, params)
     solution.optim_output = output;  
 
     % evaluate constraint violation 
-    [c, ceq, num_constr, solution_constr] = constraints(x, p0,  pf,Fleg_max, Fr_max, mu, params);
-    solution.c = c; 
+    [cineq, ceq, num_constr, solution_constr] = constraints(x, p0,  pf,Fleg_max, Fr_max, mu, Fmesh, params);
+    solution.c = cineq; 
     solution.num_constr = num_constr;
     solution.solution_constr = solution_constr;
     solution.constr_tolerance = constr_tolerance;
+
     
 end
 

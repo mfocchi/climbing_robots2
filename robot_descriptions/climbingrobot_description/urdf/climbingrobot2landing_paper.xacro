@@ -502,6 +502,9 @@
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
 
+
+
+
   <link name="foot_landing_l">
     <!-- FOOT INERTIAL -->
     <!-- This link is symmetrical left or right -->
@@ -510,7 +513,16 @@
       <mass value="0.00693606"/>
       <inertia ixx="0.00000057" ixy="0.0" ixz="0.0" iyy="0.00000084" iyz="0.0" izz="0.00000053"/>
     </inertial>
-
+    <!-- FOOT VISUAL -->
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <sphere radius="0.02175" />
+      </geometry>
+	<material name="black">
+		<color rgba="0.263 0.298 0.369 1"/>
+	</material>
+    </visual>
 
     <!-- FOOT COLLISION -->
     <collision>
@@ -597,7 +609,16 @@
       <mass value="0.00693606"/>
       <inertia ixx="0.00000057" ixy="0.0" ixz="0.0" iyy="0.00000084" iyz="0.0" izz="0.00000053"/>
     </inertial>
-
+    <!-- FOOT VISUAL -->
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <sphere radius="0.02175" />
+      </geometry>
+	<material name="black">
+		<color rgba="0.263 0.298 0.369 1"/>
+	</material>
+    </visual>
     <!-- FOOT COLLISION -->
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>

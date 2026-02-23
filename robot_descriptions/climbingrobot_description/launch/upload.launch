@@ -32,15 +32,14 @@
         <param name="robot_semantic_description" command="$(find xacro)/xacro --inorder '$(find climbingrobot_description)/urdf/$(arg robot_name).xacro'  " />
 
 
-
+      <group if="$(arg obstacle)">
 	<!--  load climb wall into param server-->	
 	<param name="climb_wall" command="$(find xacro)/xacro --inorder '$(find climbingrobot_description)/urdf/climb_wall2.xacro'  anchorZ:=$(arg spawn_z)   wall_inclination:=$(arg wall_inclination)   
 										obstacle:=$(arg obstacle) obstacle_location_x:=$(arg obstacle_location_x)  obstacle_location_y:=$(arg obstacle_location_y)  
 										obstacle_location_z:=$(arg obstacle_location_z) obstacle_size_x:=$(arg obstacle_size_x)  obstacle_size_y:=$(arg obstacle_size_y) obstacle_size_z:=$(arg obstacle_size_z)"/>
-
+	</group>
 
         
 
 
 </launch>
-

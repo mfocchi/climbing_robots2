@@ -1,0 +1,4 @@
+float32 leg_force
+geometry_msgs/Vector3 contact_normal
+---
+bool ack

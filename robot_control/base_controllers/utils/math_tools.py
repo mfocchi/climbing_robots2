@@ -23,6 +23,62 @@ class Math:
         self._Tomega_dot_mat = np.zeros([3,3])
         self._Tomega_inv_mat = np.zeros([3,3])
 
+    # def rotm2quat(self,R):
+    #     qw = math.sqrt(1 + R[0, 0] + R[1, 1] + R[2, 2]) / 2
+    #     qx = (R[2, 1] - R[1, 2]) / (4 * qw)
+    #     qy = (R[0, 2] - R[2, 0]) / (4 * qw)
+    #     qz = (R[1, 0] - R[0, 1]) / (4 * qw)
+    #     # returning normalized quaternion
+    #     norm = math.sqrt(qw*qw + qx*qx + qy*qy + qz*qz)
+    #     return np.array([qw/norm, qx/norm, qy/norm, qz/norm])
+
+    def sgn(self,x):
+        if x >= 0:
+            return 1
+        else:
+            return -1
+    def rotm2quat2(self,R):
+
+        qw = math.sqrt(1 + R[0, 0] + R[1, 1] + R[2, 2]) / 2
+        qx = self.sgn(R[2, 1] - R[1, 2]) * math.sqrt(R[0,0] - R[1,1] - R[2,2] +1)
+        qy = self.sgn(R[0, 2] - R[2, 0]) * math.sqrt(R[1,1] - R[2,2] - R[0,0] +1)
+        qz = self.sgn(R[1, 0] - R[0, 1]) * math.sqrt(R[2,2] - R[0,0] - R[1,1] +1)
+        norm = math.sqrt(qw*qw + qx*qx + qy*qy + qz*qz)
+        return np.array([qw/norm, qx/norm, qy/norm, qz/norm])
+
+    def rotm_to_quaternion(self,rotm):
+        trace = np.trace(rotm)
+        if trace > 0:
+            S = np.sqrt(trace + 1.0) * 2
+            qw = 0.25 * S
+            qx = (rotm[2, 1] - rotm[1, 2]) / S
+            qy = (rotm[0, 2] - rotm[2, 0]) / S
+            qz = (rotm[1, 0] - rotm[0, 1]) / S
+        elif rotm[0, 0] > rotm[1, 1] and rotm[0, 0] > rotm[2, 2]:
+            S = np.sqrt(1.0 + rotm[0, 0] - rotm[1, 1] - rotm[2, 2]) * 2
+            qw = (rotm[2, 1] - rotm[1, 2]) / S
+            qx = 0.25 * S
+            qy = (rotm[0, 1] + rotm[1, 0]) / S
+            qz = (rotm[0, 2] + rotm[2, 0]) / S
+        elif rotm[1, 1] > rotm[2, 2]:
+            S = np.sqrt(1.0 + rotm[1, 1] - rotm[0, 0] - rotm[2, 2]) * 2
+            qw = (rotm[0, 2] - rotm[2, 0]) / S
+            qx = (rotm[0, 1] + rotm[1, 0]) / S
+            qy = 0.25 * S
+            qz = (rotm[1, 2] + rotm[2, 1]) / S
+        else:
+            S = np.sqrt(1.0 + rotm[2, 2] - rotm[0, 0] - rotm[1, 1]) * 2
+            qw = (rotm[1, 0] - rotm[0, 1]) / S
+            qx = (rotm[0, 2] + rotm[2, 0]) / S
+            qy = (rotm[1, 2] + rotm[2, 1]) / S
+            qz = 0.25 * S
+
+        quaternion = np.array([qw, qx, qy, qz])
+        return quaternion
+
+    def rot_error_for_quat(self,q_e,q_des):
+        return np.dot(q_e[0],q_des[1:]) - np.dot(q_des[0],q_e[1:]) - np.cross(q_e[1:],q_des[1:])
+
     def normalize(self, n):
         norm1 = np.linalg.norm(n)
         n = np.true_divide(n, norm1)
@@ -45,7 +101,7 @@ class Math:
         math = Math()
         G = block([[np.eye(3), np.zeros((3, 3))],
                        [math.skew(r), np.eye(3)]])
-        return G    
+        return G
 
     def plane_z_intercept(self, point_on_plane, plane_normal):
         return point_on_plane[2] + \
@@ -55,6 +111,7 @@ class Math:
     def compute_z_component_of_plane(self, xy_components, plane_normal, z_intercept):
         return -plane_normal[0]/plane_normal[2]*xy_components[0] - \
                plane_normal[1]/plane_normal[2]*xy_components[1] + z_intercept
+    #THIS SHOULD BE DEPRECATED use eul2Rot!!!!!
     # from the rpy angles into ZYX configuration returns b_R_w
     def rpyToRot(self, *args):
         if len(args) == 3:  # equivalent to rpyToRot(self, roll, pitch, yaw)
@@ -83,26 +140,26 @@ class Math:
 
         R = Rx.dot(Ry.dot(Rz))
         return R
-                                
+
     # the dual of rpyToRot()
      # set of Euler angles (according to ZYX convention) representing the orientation of frame represented by b_R_w
     def rotTorpy(self, b_R_w):
-        rpy = np.array([0.0,0.0,0.0])                    
+        rpy = np.array([0.0,0.0,0.0])
         rpy[0] = np.arctan2(b_R_w[1,2], b_R_w[2,2])
         rpy[1] = -np.arcsin( b_R_w[0,2])
         rpy[2] = np.arctan2(b_R_w[0,1], b_R_w[0,0])
-    
+
         return rpy;
-                
+
     # dual of eul2Rot from w_R_b returns the rpy angles into ZYX configuration
     def rot2eul(self, R):
         phi = np.arctan2(R[1,0], R[0,0])
         theta = np.arctan2(-R[2,0], np.sqrt(pow(R[2,1],2) + pow(R[2,2],2) ))
         psi = np.arctan2(R[2,1], R[2,2])
-       
+
         #unit test should return roll = 0.5 pitch = 0.2  yaw = 0.3
-        # rot2eul(np.array([ [0.9363,   -0.1684,    0.3082], [0.2896 ,   0.8665  , -0.4065], [-0.1987 ,   0.4699  ,  0.8601]]))    
-        
+        # rot2eul(np.array([ [0.9363,   -0.1684,    0.3082], [0.2896 ,   0.8665  , -0.4065], [-0.1987 ,   0.4699  ,  0.8601]]))
+
         # returns roll = psi, pitch = theta,  yaw = phi
         return np.array((psi, theta, phi))
 
@@ -118,17 +175,17 @@ class Math:
 
         # returns roll = psi, pitch = theta,  yaw = phi
         return np.array((psi, theta, phi))
-            
-    # from the rpy angles into ZYX configuration returns w_R_b                            
+
+    # from the rpy angles into ZYX configuration returns w_R_b
     def eul2Rot(self, rpy):
-        c_roll =  np.cos(rpy[0])
+        c_roll = np.cos(rpy[0])
         s_roll = np.sin(rpy[0])
-        c_pitch =      np.cos(rpy[1])        
+        c_pitch = np.cos(rpy[1])
         s_pitch = np.sin(rpy[1])
         c_yaw = np.cos(rpy[2])
         s_yaw = np.sin(rpy[2])
-                                
-        Rx =  np.array([ [   1   ,         0           ,        0], 
+
+        Rx =  np.array([ [   1   ,         0           ,        0],
                          [   0   ,        c_roll  ,  -s_roll],
                          [   0   ,      s_roll,      c_roll ]]);
 
@@ -136,12 +193,12 @@ class Math:
         Ry = np.array([[c_pitch     ,     0  ,   s_pitch],
                        [      0       ,    1  ,   0],
                        [ -s_pitch     ,    0   ,  c_pitch]]);
-          
-        
+
+
         Rz = np.array([[ c_yaw  ,  -s_yaw ,        0],
                       [  s_yaw ,  c_yaw ,          0],
                       [0      ,     0     ,       1]]);
-        
+
 
 
         R =  Rz.dot(Ry.dot(Rx));
@@ -165,17 +222,17 @@ class Math:
 
 
     def Tomega_dot(self, rpy, rpyd):
-    
+
         roll = rpy[0]
         pitch = rpy[1]
         yaw = rpy[2]
         rolld = rpyd[0]
         pitchd = rpyd[1]
         yawd = rpyd[2]
-    
+
         # Tomega_dot = np.array([[ -np.cos(yaw)*np.sin(pitch)*pitchd - np.cos(pitch)*np.sin(yaw)*yawd,  -np.cos(yaw)*yawd, 0],
         #                       [ np.cos(yaw)*np.cos(pitch)*yawd - np.sin(yaw)*np.sin(pitch)*pitchd,    -np.sin(yaw)*yawd, 0  ],
-        #                       [ -np.cos(pitch)*pitchd,  0, 0 ]])
+        #                       [ -np.cos(pitch)*pitchd,                                                                0, 0 ]])
         #
         #
         # return Tomega_dot
@@ -191,7 +248,7 @@ class Math:
 
         self._Tomega_dot_mat[0, 1] = -cy * yawd
         self._Tomega_dot_mat[1, 1] = -sy * yawd
-        
+
         return self._Tomega_dot_mat
 
     """
@@ -208,13 +265,13 @@ class Math:
         3x3 matrix T_omega
     """
     def Tomega(self, rpy):
-    
+
         #convention yaw pitch roll
-    
+
         roll = rpy[0]
         pitch = rpy[1]
         yaw = rpy[2]
-        
+
 
         # Tomega = np.array([[np.cos(pitch)*np.cos(yaw),       -np.sin(yaw),                    0],
         #                    [ np.cos(pitch)*np.sin(yaw),       np.cos(yaw),                    0],
@@ -227,6 +284,7 @@ class Math:
         sp = np.sin(pitch)
         cy = np.cos(yaw)
         sy = np.sin(yaw)
+
         self._Tomega_mat[0, 0] = cp * cy
         self._Tomega_mat[1, 0] = cp * sy
         self._Tomega_mat[2, 0] = -sp
@@ -428,10 +486,10 @@ class Math:
     def is_point_inside_segment(self, first_input_point, second_input_point, point_to_check):
         epsilon = 0.001
 
-        if (np.abs(first_input_point[0] - second_input_point[0]) < 1e-02):                     
-            alpha = (point_to_check[1] - second_input_point[1]) / (first_input_point[1] - second_input_point[1]) 
+        if (np.abs(first_input_point[0] - second_input_point[0]) < 1e-02):
+            alpha = (point_to_check[1] - second_input_point[1]) / (first_input_point[1] - second_input_point[1])
         else:
-            alpha = (point_to_check[0] - second_input_point[0]) / (first_input_point[0] - second_input_point[0])                 
+            alpha = (point_to_check[0] - second_input_point[0]) / (first_input_point[0] - second_input_point[0])
 
         if(alpha>=-epsilon)&(alpha<=1.0+epsilon):
             new_point = point_to_check
@@ -441,8 +499,8 @@ class Math:
         return new_point, alpha
 
     def find_point_to_line_signed_distance(self, segment_point1, segment_point2, point_to_check):
-        # this function returns a positive distance if the point is on the right side of the segment. This will return 
-        # a positive distance for a polygon queried in clockwise order and with a point_to_check which lies inside the polygon itself 
+        # this function returns a positive distance if the point is on the right side of the segment. This will return
+        # a positive distance for a polygon queried in clockwise order and with a point_to_check which lies inside the polygon itself
         num = (segment_point2[0] - segment_point1[0])*(segment_point1[1] - point_to_check[1]) - (segment_point1[0] - point_to_check[0])*(segment_point2[1] - segment_point1[1])
         denum_sq = (segment_point2[0] - segment_point1[0])*(segment_point2[0] - segment_point1[0]) + (segment_point2[1] - segment_point1[1])*(segment_point2[1] - segment_point1[1])
         dist = num/np.sqrt(denum_sq)
@@ -450,8 +508,8 @@ class Math:
         return dist
 
     def find_residual_radius(self, polygon, point_to_check):
-        # this function returns a positive distance if the point is on the right side of the segment. This will return 
-        # a positive distance for a polygon queried in clockwise order and with a point_to_check which lies inside the polygon itself 
+        # this function returns a positive distance if the point is on the right side of the segment. This will return
+        # a positive distance for a polygon queried in clockwise order and with a point_to_check which lies inside the polygon itself
         # print 'poly',polygon
         numberOfVertices = np.size(polygon,0)
         # print 'polygon in residual radius computation', polygon
@@ -469,7 +527,7 @@ class Math:
                 residual_radius = d_temp
 
         # we dont need to compute for the last edge cause we added an extra point to close the polytop (last point equal to the first)
-        
+
 #        print polygon[numberOfVertices-1,:], polygon[0,:], d_temp
         return residual_radius
 
@@ -512,7 +570,7 @@ class Math:
         final_point = points_along_direction[idx,:]
         #print points_along_direction, point_to_com_distance, idx
         return final_point, intersection_points
-        
+
 
 def cross_mx(v):
     mx =np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
@@ -661,23 +719,31 @@ def euler_from_quaternion(quaternion, axes='sxyz'):
     return euler_from_matrix(quaternion_matrix(quaternion), axes)
 
 def quaternion_matrix(quaternion):
-    """Return homogeneous rotation matrix from quaternion.
+    """Convert a quaternion [x, y, z, w] into a 4×4 homogeneous rotation matrix (suitable for transformations in 3D space).
 
     >>> R = quaternion_matrix([0.06146124, 0, 0, 0.99810947])
     >>> np.allclose(R, rotation_matrix(0.123, (1, 0, 0)))
     True
 
     """
+    # Takes the first 4 elements of quaternion (in case the input has extra values).
     q = np.array(quaternion[:4], dtype=np.float64, copy=True)
+    #compute the squared norm of the quaternion
     nq = np.dot(q, q)
+    #If the quaternion is extremely close to zero (bad input, degenerate case), just return the identity transform (no rotation).
     if nq < _EPS:
         return np.identity(4)
+    #Normalizes the quaternion so it has unit length. if q is normalized this is just sqrt(2), this trick enables to have x2 inside the  
+    #The outer product gives all possible products qiqj at once,Then the final rotation matrix is just an arrangement of those precomputed terms
     q *= math.sqrt(2.0 / nq)
-    q = np.outer(q, q)
+    #Faster execution in NumPy
+    M = np.outer(q, q)
+    #This is mathematically equivalent to the classic formula for quaternion → rotation (https://www.astro.rug.nl/software/kapteyn-beta/_downloads/attitude.pdf eq. 127)
+    # but written with the outer product (you can derive they are the same)
     return np.array((
-        (1.0-q[1, 1]-q[2, 2],     q[0, 1]-q[2, 3],     q[0, 2]+q[1, 3], 0.0),
-        (    q[0, 1]+q[2, 3], 1.0-q[0, 0]-q[2, 2],     q[1, 2]-q[0, 3], 0.0),
-        (    q[0, 2]-q[1, 3],     q[1, 2]+q[0, 3], 1.0-q[0, 0]-q[1, 1], 0.0),
+        (1.0-M[1, 1]-M[2, 2],     M[0, 1]-M[2, 3],     M[0, 2]+M[1, 3], 0.0),
+        (    M[0, 1]+M[2, 3], 1.0-M[0, 0]-M[2, 2],     M[1, 2]-M[0, 3], 0.0),
+        (    M[0, 2]-M[1, 3],     M[1, 2]+M[0, 3], 1.0-M[0, 0]-M[1, 1], 0.0),
         (                0.0,                 0.0,                 0.0, 1.0)
         ), dtype=np.float64)
 
@@ -808,7 +874,252 @@ def polynomialRef(x0, xf, v0, vf, a0, af, T):
 
     return pos, vel, acc
 
+def unwrap_vector(rpy_meas, rpy_old):
+    rpy_unwrapped = np.zeros(3)
+    for i in range(3):
+        rpy_unwrapped[i] = rpy_meas[i]
+        while (rpy_unwrapped[i] < rpy_old[i] - np.pi):
+            rpy_unwrapped[i] += 2 * np.pi
+        while (rpy_unwrapped[i] > rpy_old[i] + np.pi):
+            rpy_unwrapped[i] -= 2 * np.pi
+        rpy_old[i] = rpy_unwrapped[i]
+    return rpy_unwrapped, rpy_old
+
+def unwrap_angle(angle_meas, angle_old):
+    angle_unwrapped = angle_meas
+    while (angle_unwrapped < (angle_old - np.pi)):
+            angle_unwrapped += 2 * np.pi
+    while (angle_unwrapped > (angle_old + np.pi)):
+        angle_unwrapped -= 2 * np.pi
+    angle_old = angle_unwrapped
+    return angle_unwrapped, angle_old
+
+def wrapToPi(angle):
+    """
+    Normalize an angle to [-pi, pi].
+
+    :param angle: (float)
+    :return: (float) Angle in radian in [-pi, pi]
+    """
+    while angle > np.pi:
+        angle -= 2.0 * np.pi
+
+    while angle < -np.pi:
+        angle += 2.0 * np.pi
+
+    return angle
+
+def angdiff(y,x):
+    d = y - x
+    if abs(d) > np.pi:
+        # wrapToPi
+        etheta = wrapTo2pi(d + np.pi) - np.pi
+    else:
+        etheta = d
+    return etheta
+
+def wrapTo2pi(theta):
+    theta = np.mod(theta, 2 * np.pi)
+    return theta
 
 
+def forward_euler_step(func, y, t=None, h=0.001, *args, **kwargs):
+    """
+       Performs a single Forward Euler step
+       Parameters:
+           func : callable
+               The ODE function (dy/dt = f(y, t, *args, **kwargs)).
+           y : array-like
+               Current state at time t.
+           t : float
+               Current time.
+           h : float
+               Time step size.
+           *args : tuple
+               Additional positional arguments for the dynamics function.
+           **kwargs : dict
+               Additional keyword arguments for the dynamics function.
+
+       Returns:
+           y_next : array-like
+               The state at time t + h (next state).
+       """
+    if t is not None:
+        y_next = y + h * func(y,t, *args, **kwargs)
+        t_next = t + h
+        return t_next, y_next
+    else:
+        y_next = y + h * func(y, *args, **kwargs)
+        return y_next
+
+def heun_step(func, y, t=None, t_next=None, h=0.001, *args, **kwargs):
+    """
+       Performs a single Heun step
+
+       Parameters:
+           func : callable
+               The ODE function (dy/dt = f(y, t, *args, **kwargs)).
+           y : array-like
+               Current state at time t.
+           t : float
+               Current time.
+           h : float
+               Time step size.
+           *args : tuple
+               Additional positional arguments for the dynamics function.
+           **kwargs : dict
+               Additional keyword arguments for the dynamics function.
+
+       Returns:
+           y_next : array-like
+               The state at time t + h (next state).
+       """
+    if t is not None:
+        # Predict
+        y_predict = y + h * func(y,t, *args, **kwargs)
+        # Correct
+        y_next = y + (h / 2) * (func(y,t,  *args, **kwargs) + func(t+h, y_predict,  *args, **kwargs))
+        t_next = t + h
+        return t_next, y_next
+    else:
+        # Predict
+        y_predict = y + h * func(y, *args, **kwargs)
+        # Correct
+        y_next = y + (h / 2) * (func(y, *args, **kwargs) + func(y_predict, *args, **kwargs))
+        return y_next
 
 
+def backward_euler_step(func, y, t=None, h=0.001, *args, **kwargs):
+    # 1) The y_next value is updated implicitly using an iterative method
+    # (Newton's method) to solve the implicit equation y_next = y + h * f(y_next).
+    # Jacobian Approximation: We approximate the Jacobian matrix (derivative of the function with respect to the state y)
+    # using finite differences, which is common in solving implicit equations numerically.
+    """
+    Performs a single Backward Euler step with Newton's method for solving the implicit equation.
+
+    Parameters:
+        func : callable
+            The ODE function (dy/dt = f(y, t, *args, **kwargs)).
+        y : array-like
+            Current state at time t.
+        t : float
+            Current time.
+        h : float
+            Time step size.
+        *args : tuple
+            Additional positional arguments for the dynamics function.
+        **kwargs : dict
+            Additional keyword arguments for the dynamics function.
+
+    Returns:
+        y_next : array-like
+            The state at time t + h (next state).
+    """
+    # Define a tolerance for Newton's method
+    tol = 1e-6
+    max_iter = 50
+    damping_factor = 1e-6  # Regularization factor (small value to stabilize)
+
+    # Initialize the guess for y_next (start with y as the initial guess)
+    y_next = np.copy(y)
+
+    for i in range(max_iter):
+        # Compute the residual (implicit equation)
+        if t is not None:
+            residual = y_next - y - h * func(y_next, t,  *args, **kwargs)
+        else:
+            residual = y_next - y - h * func(y_next, *args, **kwargs)
+        # Initialize Jacobian matrix
+        jacobian = np.zeros((len(y), len(y)))
+
+        # Compute the Jacobian of the function (derivative w.r.t. y_next)
+        # Approximate the Jacobian using finite differences
+        #This requires the Jacobian to be a matrix where each element J[i, j]
+        #represents the partial derivative of the i-th component of the output with respect to the j-th state variable.
+        
+        epsilon = 1e-6
+        for j in range(len(y)):
+
+            # Perturb the j-th component of y_next
+            y_next_perturbed = np.copy(y_next)
+            dx = np.zeros_like(y_next)
+            dx[j] = epsilon
+            # print("1",func(y_next_perturbed, *args, **kwargs))
+            # print("2",func(y_next, *args, **kwargs))
+            y_next_perturbed += dx
+
+            # Compute the difference in the function values
+            if t is not None:
+                df = func(y_next_perturbed,t, *args, **kwargs) - func(y_next,t, *args, **kwargs)
+            else:
+                df = func(y_next_perturbed, *args, **kwargs) - func(y_next, *args, **kwargs)
+            #print(f"{j} : {df} ")
+            # Store the derivative in the Jacobian matrix
+            jacobian[:, j] = df / epsilon  # Divide by epsilon to get the derivative
+
+        #print("J", jacobian)
+        # Regularization: Add a small value to the diagonal of the Jacobian matrix
+        #jacobian += np.eye(len(y)) * damping_factor
+
+        Fprime = np.eye(len(y))-h*jacobian
+
+
+        # Solve the implicit equation
+        try:
+            y_next = y_next - np.linalg.solve(Fprime, residual)  # Solve for the next state
+        except np.linalg.LinAlgError:
+            print("Jacobian matrix is singular, trying again with a higher damping factor.")
+            damping_factor *= 10  # Increase the damping factor and try again
+            continue
+        # Check if residual is small enough to stop iterating
+        if np.linalg.norm(residual) < tol:
+            break
+
+    if t is not None:
+        t_next = t + h
+        return t_next, y_next
+    else:
+        return y_next
+
+
+def RK4_step(func, y, t=None, h=0.001, *args,  **kwargs):
+    """
+    Performs a single Runge-Kutta 4th-order integration step.
+
+    Parameters:
+        func : callable
+            The ODE function dy/dt = f(y, *args, **kwargs), where y is the dependent variable.
+        y : float or array-like
+            Current value of the dependent variable y.
+        h : float
+            Step size.
+        *args : tuple
+            Additional positional arguments to pass to func.
+        **kwargs : dict
+            Additional keyword arguments to pass to func.
+
+    Returns:
+        y_next : float or array-like
+            The value of y after a single RK4 step.
+    """
+    y = np.asarray(y)  # Ensure y is a NumPy array
+
+    if t is not None:
+        # Iterate over each time step
+        k1 = h * func(t, y, *args,  **kwargs)
+        k2 = h * func(t + h / 2, y + k1 / 2, *args,  **kwargs)
+        k3 = h * func(t + h / 2, y + k2 / 2, *args,  **kwargs)
+        k4 = h * func(t + h, y + k3, *args)
+    else:
+        k1 = h * func(y, *args,  **kwargs)
+        k2 = h * func(y + k1 / 2, *args,  **kwargs)
+        k3 = h * func(y + k2 / 2, *args,  **kwargs)
+        k4 = h * func(y + k3, *args,  **kwargs)
+
+    y_next = y + (k1 + 2 * k2 + 2 * k3 + k4) / 6
+
+    if t is not None:
+        t_next = t + h
+        return t_next, y_next
+    else:
+        return y_next

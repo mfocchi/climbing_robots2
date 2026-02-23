@@ -15,11 +15,35 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wl,--no-as-needed")
 
 # find dependencies using catkin
 
-find_package(catkin REQUIRED
+find_package(catkin REQUIRED std_msgs geometry_msgs message_generation
   COMPONENTS
 )
+
+
+add_message_files(
+  DIRECTORY
+  msg
+  FILES
+  RopeCommand.msg
+  PropellerCommand.msg
+  RopeTelemetry.msg
+  AlpineBodyTelemetry.msg
+)
+
+add_service_files(
+  DIRECTORY
+  srv
+  FILES
+  AlpineBodyCommand.srv
+  RopeControlMode.srv
+)
+
+generate_messages(DEPENDENCIES std_msgs geometry_msgs)
+
+
+
 catkin_package(
-  CATKIN_DEPENDS
+  CATKIN_DEPENDS geometry_msgs std_msgs 
 )
 
 install(DIRECTORY config/
@@ -48,6 +72,9 @@ install(DIRECTORY urdf/
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/urdf
   PATTERN ".svn" EXCLUDE)
 
+install(DIRECTORY media/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/media
+  PATTERN ".svn" EXCLUDE)
 
 
 install(DIRECTORY rviz/

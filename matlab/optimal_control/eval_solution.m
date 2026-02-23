@@ -117,12 +117,46 @@ solution.Ekinfy = params.m/2*pd_fine(2,end)'*pd_fine(2,end);
 solution.Ekinfz = params.m/2*pd_fine(3,end)'*pd_fine(3,end);
 solution.Ekinf = params.m/2*pd_fine(:,end)'*pd_fine(:,end);
 
-
+Ekin = zeros(1, length(t_fine));
+intEkin = 0;
 for i =1:length(t_fine)
-    solution.Ekin(i) = params.m/2*pd_fine(:,i)'*pd_fine(:,i);
-    solution.intEkin = solution.intEkin +  solution.Ekin(i)*dt;
+    Ekin(i) = params.m/2*pd_fine(:,i)'*pd_fine(:,i);
+    intEkin =  intEkin +  Ekin(i)*dt;
 end
-    
+solution.Ekin = Ekin;
+solution.intEkin =intEkin;
+ 
+%Once a structure is read or used in a way that forces code generation to fix its definition, you cannot add new fields afterward.
+%energy computations
+
+% this function is not used, is implemented just as a reference for python
+% we compute energy consumption in python
+dt_dyn = Tf / (params.N_dyn-1); 
+%%Energy consumption
+J_TO_Wh = 0.000277; %maps joule to Wh
+impulse_end_idx = max(find(t<=params.T_th));
+% the work is the kinetic energy at the end of the thrusting
+impulse_work =   Ekin(impulse_end_idx); %params.m/2*pd(:,impulse_end_idx)'*pd(:,impulse_end_idx);
+%for the hoist work we integrathe the ppowet on a rough grid
+hoist_work = 0;
+for i=1:length(t)
+    hoist_work = hoist_work + (abs(Fr_l(i).*l1d(i)) + abs(Fr_r(i).*l2d(i)))* dt_dyn;  %assume the motor is not regenreating
+end
+
+
+% more precise
+dt = t_fine(2)-t_fine(1);
+hoist_work_fine = 0;
+for i=1:length(t_fine)
+    hoist_work_fine = hoist_work_fine + (abs(Fr_l_fine(i).*l1d_fine(i)) + abs(Fr_r_fine(i).*l2d_fine(i)))* dt;  %assume the motor is not regenreating
+end
+
+%     impulse_workWh = J_TO_Wh*impulse_work
+%     hoist_workWh=J_TO_Wh*hoist_work
+
+solution.consumed_energy = impulse_work+hoist_work_fine;
+solution.instantaneous_power = abs(l1d_fine.*Fr_l_fine) + abs(l1d_fine.*Fr_l_fine);
+solution.average_power = hoist_work_fine/Tf;
 
 
 end

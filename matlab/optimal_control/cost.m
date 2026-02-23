@@ -1,4 +1,4 @@
-function cost = cost(x, p0,  pf, params)
+function cost = cost(x, p0,  pf, Fcost, params)
 
     Fleg = [ x(1); x(2); x(3)];
     Tf = x(4);
@@ -27,20 +27,14 @@ function cost = cost(x, p0,  pf, params)
     p_0 = p(:,1);
     p_f = p(:,end);
 
-    % be careful there are only N values in this vector the path migh be
-    % underestimated!
-%     deltax = diff(p(1,:));  % diff(X);
-%     deltay = diff(p(2,:));   % diff(Y);
-%     deltaz = diff(p(3,:));    % diff(Z);
-%     path_length = sum(sqrt(deltax.^2 + deltay.^2 + deltaz.^2));
-
+ 
     p_0 = p_0(:);
     p0 = p0(:);
     p_f= p_f(:);
     pf = pf(:);
     
     %minimize the final kin energy at contact
-    Ekinfcost=  params.m/2 * (params.contact_normal'*pd(:,end))*params.contact_normal'*pd(:,end);
+    Ekinfcost=  params.m/2 * (params.contact_normal(:)'*pd(:,end))*params.contact_normal(:)'*pd(:,end);
       
     % minimize hoist work / energy consumption for the hoist work we integrathe the power on a rough grid
     hoist_work = sum(abs(Fr_l.*l1d)*dt_dyn) + sum(abs(Fr_r.*l2d)*dt_dyn);  %assume the motor is not regenreating
@@ -51,17 +45,23 @@ function cost = cost(x, p0,  pf, params)
     % to -180 and stays there! with sum(abs(diff(Fr_r))) +
     % sum(abs(diff(Fr_l))) but does not converge at all 
     smooth_correct = sum(diff(Fr_r).^2)+ sum(diff(Fr_l).^2); % this is nice but slower
-    smooth = sum(diff(Fr_r)) + sum(diff(Fr_l));
+    smooth = sum(diff(Fr_r)) + sum(diff(Fr_l)); %this gives negative values!
     
-    
-    %fprintf("hoist_work %f\n ",hoist_work)    
-    %fprintf("smooth %f\n ", smooth)
-    %fprintf("tempo %f\n ", w6*Tf)
 
-     
+    landing_cost = evalCost(p_f(3), p_f(2), params, Fcost);
+    
+
+
     %cost =  0.001 * params.w1 *Ekinfcost +   params.w4 *smooth ;% converge
     %super slowly
-    cost =  params.w2 *hoist_work +   params.w1 *smooth ;% 72 iter
+    cost =    params.w1 *smooth_correct + params.w2 *hoist_work +   params.w3*landing_cost;% 72 iter
+
+    if params.debug
+        fprintf("\n smooth %f\n ", params.w1*smooth_correct);
+        fprintf(" hoist_work %f\n ",params.w2*hoist_work);  
+        fprintf(" landing_cost %f\n ", params.w3*landing_cost);
+        fprintf(" total_cost %f\n ", cost);
+    end
    % cost =    params.w4 *smooth ;% 27 iter
    % cost =    params.w4 *smooth_correct ;% 96 iter
 end

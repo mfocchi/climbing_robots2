@@ -16,11 +16,14 @@ class PidManager:
             ros.wait_for_service("/set_pids")
             self.set_pd_service = ros.ServiceProxy("/set_pids", set_pids)
         except (ros.ServiceException, ros.ROSException) as e:
-            print(colored("PID Manager: Service call /set_pids non available","red"))
+            print(colored("PID Manager: Service call /set_pids non available, check ros_impedance_controller node","red"))
         self.joint_pid = pid()
         self.joint_pid_log = len(jnames)*[pid()]
         self.req_msg = set_pidsRequest()						
         print(colored("PID Manager initialized", "red"))
+
+    def getPDs(self):
+        return self.joint_pid_log
 
     def setPDs(self, kp, kd, ki = 0):
         """
