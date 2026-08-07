@@ -46,7 +46,8 @@ Note: You need the matlab runtime Environment installed to be able to run the si
 
 1) you need to have an installation of Matlab 2023a in your computer (outside docker) that has a standalone license located either in /usr/local/MATLAB/R2023a/licenses or in ~/.matlab/R2023a_licenses. Unfortunately the license should match the Matlab installed inside the docker. The license file looks like this: license_computer_name_XXXXXX_R2023a.lic.
 2) copy the license file into the folder $HOME/trento_lab_framework/.matlab/R2023a_licenses/
-3) start matlab
+3) start matlab that only once will ask you for the activation
+4) If you have any issue delete the folder .matlab and recreate it
 
 ### Matlab
 
