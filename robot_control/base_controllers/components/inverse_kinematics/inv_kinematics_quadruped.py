@@ -3,7 +3,7 @@ import time
 import numpy as np
 import pinocchio as pin
 from base_controllers.utils.utils import Utils
-from base_controllers.utils.common_functions import getRobotModel
+from base_controllers.utils.common_functions import getRobotModelFloating
 
 import scipy.optimize
 import scipy.linalg
@@ -113,6 +113,7 @@ class InverseKinematics:
         self.DAMP = np.eye(3) * 1e-5
 
 
+    #This assumes HAA negative outwards
     def ik_leg(self, foot_pos, leg, hip=HIP_DOWN, knee=KNEE_INWARD, verbose = False):
         self.q[:] = 0
         isFeasible = False
@@ -219,9 +220,9 @@ class InverseKinematics:
     @staticmethod
     def clip_scalar(a, min, max):
         # this method is 100x faster than np.clip(a, min, max) (that is suited for ndarray, not for scalars)
-        if min > a:
+        if a<=min:
             return min
-        if max < a:
+        if a>=max:
             return max
         return a
 
@@ -303,23 +304,25 @@ if __name__ == '__main__':
     # knee = [KNEE_INWARD] * 4
 
     robot_name = 'go1'
-    qj = np.array([0.2, 0.78, -1.7,
-                   0.2, 0.78, -1.7,
-                   -0.2, 0.78, -1.7,
-                   -0.2, 0.78, -1.7])
-    hip = [HIP_DOWN] * 4
-    knee = [KNEE_INWARD] * 2 + [KNEE_OUTWARD] * 2
+    qj = np.array([0.2, 0.78, -1.7, #LF
+                   0.2, 0.78, -1.7, #LH
+                   -0.2, 0.78, -1.7,  #RF
+                   -0.2, 0.78, -1.7]) #RH
 
-    robot = getRobotModel(robot_name, generate_urdf=True)
+
+    hip = [HIP_DOWN] * 4
+    knee = [KNEE_INWARD, KNEE_OUTWARD,KNEE_INWARD,  KNEE_OUTWARD]
+
+    robot = getRobotModelFloating(robot_name)
     q = pin.neutral(robot.model)
     q[7:12 + 7] = qj
 
     IK = InverseKinematics(robot)
     IKOpt = InverseKinematicsOptimization(robot)
-    RK = robotKinematics(robot, ['lf_foot', 'rf_foot','lh_foot', 'rh_foot'])
+    IKPinocchio = robotKinematics(robot, ['lf_foot', 'lh_foot','rf_foot', 'rh_foot'])
     pin.forwardKinematics(robot.model, robot.data, q)
     pin.updateFramePlacements(robot.model, robot.data)
-    legs = ['lf', 'rf','lh', 'rh']
+    legs = ['lf', 'lh','rf', 'rh']
     feet_id = [robot.model.getFrameId(leg + '_foot') for leg in legs]
     feet_pos = [robot.data.oMf[foot].translation.copy() for foot in feet_id]
 
@@ -345,18 +348,18 @@ if __name__ == '__main__':
         print('\n\tAnalytics time:', np.round(np.array([T*1000]),3)[0], 'ms')
         print('\tIK Solution Analytics:', sol)
 
-        start = time.time()
-        solOpt = IKOpt.solve(feet_pos[i], robot.model.frames[foot].name, q0=np.array([0.0, 0.7, -1.4]))
-        T = time.time() - start
-        print('\n\tOptimization time:', np.round(np.array([T*1000]),3)[0], 'ms')
-        print('\tIK Solution Optimization:', solOpt.x)
+        # start = time.time()
+        # solOpt = IKOpt.solve(feet_pos[i], robot.model.frames[foot].name, q0=np.array([0.0, 0.7, -1.4]))
+        # T = time.time() - start
+        # print('\n\tOptimization time:', np.round(np.array([T*1000]),3)[0], 'ms')
+        # print('\tIK Solution Optimization:', solOpt.x)
 
 
         start = time.time()
-        solMic, IKsuccess = RK.footInverseKinematicsFixedBaseLineSearch(feet_pos[i], robot.model.frames[foot].name, q0_leg=np.array([0.0, 0.7, -1.4]))
+        solPinocchio, IKsuccess = IKPinocchio.footInverseKinematicsFixedBaseLineSearch(feet_pos[i], robot.model.frames[foot].name, q0_leg=np.array([0.0, 0.7, -1.4]))
         T = time.time() - start
-        print('\n\tMichele time:', np.round(np.array([T*1000]),3)[0], 'ms')
-        print('\tIK Solution Michele:      ', solMic)
+        print('\n\tPinocchio time:', np.round(np.array([T*1000]),3)[0], 'ms')
+        print('\tIK Solution Pinocchio:      ', solPinocchio)
 
 
 

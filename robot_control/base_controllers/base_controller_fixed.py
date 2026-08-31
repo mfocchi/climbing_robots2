@@ -45,12 +45,12 @@ import sys
 
 import  base_controllers.params as conf
 # robots can be ur5 and jumpleg to load ur5 you need to set this xacro path in loadModelAndPublishers
-robotName = "jumpleg"
+robotName = "ur5"
 
 from base_controllers.components.inverse_kinematics.inv_kinematics_pinocchio import robotKinematics
 from base_controllers.utils.math_tools import Math
 from gazebo_msgs.srv import ApplyBodyWrench
-from base_controllers.utils.common_functions import plotJoint
+from base_controllers.utils.common_functions import plotJoint, checkRosControllerRunning
 
 class BaseControllerFixed(threading.Thread):
     """
@@ -113,17 +113,17 @@ class BaseControllerFixed(threading.Thread):
 
         print("Initialized fixed basecontroller---------------------------------------------------------------")
 
-    def startSimulator(self, world_name = None, use_torque_control = True,  additional_args = None, launch_file = None):
-        # needed to be able to load a custom world file
-        print(colored('Adding gazebo model path!', 'blue'))
-        custom_models_path = rospkg.RosPack().get_path('ros_impedance_controller')+"/worlds/models/"
-        if os.getenv("GAZEBO_MODEL_PATH") is not None:
-            os.environ["GAZEBO_MODEL_PATH"] +=":"+custom_models_path
-        else:
-            os.environ["GAZEBO_MODEL_PATH"] = custom_models_path
+    def startSimulator(self, world_name = None,  additional_args = None, launch_file = None):
+        os.system("pkill rosmaster")
+        os.system("pkill gzserver")
+        os.system("pkill gzclient")
+        os.system("pkill rviz")
+        if launch_file=='standard':
+            launch_file = rospkg.RosPack().get_path('ros_impedance_controller') + '/launch/start_framework.launch'
 
         if launch_file is None:
             launch_file = rospkg.RosPack().get_path('ros_impedance_controller') + '/launch/ros_impedance_controller_' + self.robot_name + '.launch'
+
 
         # clean up previous process
         os.system("killall rosmaster rviz gzserver gzclient")
@@ -132,10 +132,11 @@ class BaseControllerFixed(threading.Thread):
         uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
         roslaunch.configure_logging(uuid)
         cli_args = [launch_file,
+                    'robot_name:=' + self.robot_name,
                     'spawn_x:=' + str(conf.robot_params[self.robot_name]['spawn_x']),
                     'spawn_y:=' + str(conf.robot_params[self.robot_name]['spawn_y']),
                     'spawn_z:=' + str(conf.robot_params[self.robot_name]['spawn_z'])]
-        cli_args.append('use_torque_control:=' + str(use_torque_control))
+        cli_args.append('use_torque_control:=' + str(self.use_torque_control).lower())
         if additional_args is not None:
             cli_args.extend(additional_args)
         if world_name is not None:
@@ -149,10 +150,10 @@ class BaseControllerFixed(threading.Thread):
         ros.sleep(1.0)
         print(colored('SIMULATION Started', 'blue'))
 
-    def loadModelAndPublishers(self,  xacro_path = None, additional_urdf_args = None):
+    def loadModelAndPublishers(self,  xacro_path = None, additional_urdf_args = None, markers_time_to_live = 0.):
 
         # instantiating objects
-        self.ros_pub = RosPub(self.robot_name, only_visual=True)
+        self.ros_pub = RosPub(self.robot_name, only_visual=True, markers_time_to_live=markers_time_to_live)
         self.pub_des_jstate = ros.Publisher("/command", JointState, queue_size=1, tcp_nodelay=True)
         # freeze base  and pause simulation service
         self.reset_world = ros.ServiceProxy('/gazebo/set_model_state', SetModelState)
@@ -206,7 +207,7 @@ class BaseControllerFixed(threading.Thread):
 
     def startupProcedure(self):
         if (self.use_torque_control):
-            if  ("/" + self.robot_name + "/ros_impedance_controller" not in rosnode.get_node_names()):
+            if not checkRosControllerRunning("ros_impedance_controller", self.robot_name):
                 print(colored('Error: you need to launch the ros impedance controller in torque mode!', 'red'))
                 sys.exit()
             self.pid.setPDjoints( conf.robot_params[self.robot_name]['kp'], conf.robot_params[self.robot_name]['kd'], np.zeros(self.robot.na))
@@ -327,7 +328,7 @@ def talker(p):
 
         #wait for synconization of the control loop
         rate.sleep()
-        p.time = np.round(p.time + np.array([conf.robot_params[p.robot_name]['dt']]), 3) # to avoid issues of dt 0.0009999
+        p.time = np.round(p.time + np.array([conf.robot_params[p.robot_name]['dt']]), 4) # to avoid issues of dt 0.0009999
 
 if __name__ == '__main__':
     p = BaseControllerFixed(robotName)
